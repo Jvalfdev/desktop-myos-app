@@ -32,7 +32,7 @@ public partial class AgendaViewModel : ViewModelBase
     /// Fecha actualmente seleccionada en el calendario.
     /// </summary>
     [ObservableProperty]
-    private DateTime? _fechaSeleccionada = DateTime.Today;
+    private DateTimeOffset? _fechaSeleccionada = DateTimeOffset.Now.Date;
 
     /// <summary>
     /// Modo de vista: Día, Semana o Mes.
@@ -79,7 +79,7 @@ public partial class AgendaViewModel : ViewModelBase
     private Cliente? _clienteSeleccionado;
 
     [ObservableProperty]
-    private DateTime? _fechaCita = DateTime.Today;
+    private DateTimeOffset? _fechaCita = DateTimeOffset.Now.Date;
 
     [ObservableProperty]
     private TimeSpan _horaInicio = new TimeSpan(10, 0, 0); // 10:00 por defecto
@@ -178,7 +178,7 @@ public partial class AgendaViewModel : ViewModelBase
         }
         else
         {
-            FechaSeleccionada = DateTime.Today.AddDays(-1);
+            FechaSeleccionada = DateTimeOffset.Now.Date.AddDays(-1);
         }
         _ = CargarCitas();
     }
@@ -195,7 +195,7 @@ public partial class AgendaViewModel : ViewModelBase
         }
         else
         {
-            FechaSeleccionada = DateTime.Today.AddDays(1);
+            FechaSeleccionada = DateTimeOffset.Now.Date.AddDays(1);
         }
         _ = CargarCitas();
     }
@@ -206,7 +206,7 @@ public partial class AgendaViewModel : ViewModelBase
     [RelayCommand]
     private void IrAHoy()
     {
-        FechaSeleccionada = DateTime.Today;
+        FechaSeleccionada = DateTimeOffset.Now.Date;
         _ = CargarCitas();
     }
 
@@ -243,20 +243,21 @@ public partial class AgendaViewModel : ViewModelBase
             MensajeError = string.Empty;
 
             // Si no hay fecha seleccionada, usar hoy
-            var fecha = FechaSeleccionada ?? DateTime.Today;
+            var fechaOffset = FechaSeleccionada ?? DateTimeOffset.Now.Date;
+            var fecha = fechaOffset.Date; // Convertir a DateTime para la BD
 
             DateTime inicio, fin;
 
             switch (VistaActual)
             {
                 case VistaAgenda.Dia:
-                    inicio = fecha.Date;
+                    inicio = fecha;
                     fin = inicio.AddDays(1);
                     break;
                 case VistaAgenda.Semana:
                     // Lunes de la semana
                     var diasDesdeLunes = ((int)fecha.DayOfWeek + 6) % 7;
-                    inicio = fecha.Date.AddDays(-diasDesdeLunes);
+                    inicio = fecha.AddDays(-diasDesdeLunes);
                     fin = inicio.AddDays(7);
                     break;
                 case VistaAgenda.Mes:
@@ -264,7 +265,7 @@ public partial class AgendaViewModel : ViewModelBase
                     fin = inicio.AddMonths(1);
                     break;
                 default:
-                    inicio = fecha.Date;
+                    inicio = fecha;
                     fin = inicio.AddDays(1);
                     break;
             }
@@ -293,9 +294,9 @@ public partial class AgendaViewModel : ViewModelBase
             Citas = new ObservableCollection<Cita>(listaOrdenada);
             TotalCitas = listaOrdenada.Count;
 
-            var fechaLog = FechaSeleccionada ?? DateTime.Today;
+            var fechaLog = FechaSeleccionada ?? DateTimeOffset.Now.Date;
             Log.Debug("Citas cargadas: {Count} citas para {Vista} del {Fecha}", 
-                TotalCitas, VistaActual, fechaLog.ToString("dd/MM/yyyy"));
+                TotalCitas, VistaActual, fechaLog.Date.ToString("dd/MM/yyyy"));
         }
         catch (Exception ex)
         {
@@ -342,7 +343,7 @@ public partial class AgendaViewModel : ViewModelBase
     private void NuevaCita()
     {
         LimpiarFormulario();
-        FechaCita = FechaSeleccionada ?? DateTime.Today;
+        FechaCita = FechaSeleccionada ?? DateTimeOffset.Now.Date;
         EsEdicion = false;
         TituloFormulario = "✨ Nueva Cita";
         MostrarFormulario = true;
@@ -383,7 +384,8 @@ public partial class AgendaViewModel : ViewModelBase
                 return;
             }
 
-            if (FechaCita.Value < DateTime.Today && !EsEdicion)
+            var fechaCitaDateTime = FechaCita.Value.Date;
+            if (fechaCitaDateTime < DateTime.Today && !EsEdicion)
             {
                 MensajeError = "No se pueden crear citas en el pasado";
                 return;
@@ -414,7 +416,7 @@ public partial class AgendaViewModel : ViewModelBase
             {
                 // Actualizar cita existente
                 CitaSeleccionada.ClienteId = ClienteSeleccionado.Id;
-                CitaSeleccionada.Fecha = FechaCita.Value;
+                CitaSeleccionada.Fecha = fechaCitaDateTime;
                 CitaSeleccionada.HoraInicio = horaParsed;
                 CitaSeleccionada.DuracionMinutos = DuracionMinutos;
                 CitaSeleccionada.TipoCita = TipoCita;
@@ -430,7 +432,7 @@ public partial class AgendaViewModel : ViewModelBase
                 var nuevaCita = new Cita
                 {
                     ClienteId = ClienteSeleccionado.Id,
-                    Fecha = FechaCita.Value,
+                    Fecha = fechaCitaDateTime,
                     HoraInicio = horaParsed,
                     DuracionMinutos = DuracionMinutos,
                     TipoCita = TipoCita,
@@ -535,7 +537,7 @@ public partial class AgendaViewModel : ViewModelBase
     private void LimpiarFormulario()
     {
         ClienteSeleccionado = null;
-        FechaCita = DateTime.Today;
+        FechaCita = DateTimeOffset.Now.Date;
         HoraInicio = new TimeSpan(10, 0, 0);
         HoraInicioString = "10:00";
         DuracionMinutos = 60;
@@ -553,7 +555,7 @@ public partial class AgendaViewModel : ViewModelBase
     private void CargarCitaEnFormulario(Cita cita)
     {
         ClienteSeleccionado = cita.Cliente;
-        FechaCita = cita.Fecha;
+        FechaCita = new DateTimeOffset(cita.Fecha);
         HoraInicio = cita.HoraInicio;
         HoraInicioString = cita.HoraInicio.ToString(@"hh\:mm");
         DuracionMinutos = cita.DuracionMinutos;
