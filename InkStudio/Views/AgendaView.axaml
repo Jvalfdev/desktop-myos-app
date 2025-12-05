@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:InkStudio.ViewModels"
              xmlns:models="using:InkStudio.Models"
+             xmlns:views="using:InkStudio.Views"
              xmlns:converters="using:InkStudio.Converters"
              x:Class="InkStudio.Views.AgendaView"
              x:DataType="vm:AgendaViewModel"
@@ -90,9 +91,15 @@
                 <Button Grid.Column="4" Content="🔄 Actualizar" Command="{Binding CargarCitasCommand}"/>
             </Grid>
             
-            <!-- Lista de citas -->
-            <ScrollViewer Grid.Row="3">
-                <ItemsControl ItemsSource="{Binding Citas}">
+            <!-- Contenido según vista -->
+            <Panel Grid.Row="3">
+                <!-- Calendario (solo en vista Mes) -->
+                <views:CalendarView DataContext="{Binding CalendarVM}"
+                                    IsVisible="{Binding $parent[UserControl].((vm:AgendaViewModel)DataContext).MostrarCalendario}"/>
+                
+                <!-- Lista de citas (Día y Semana) -->
+                <ScrollViewer IsVisible="{Binding MostrarLista}">
+                    <ItemsControl ItemsSource="{Binding Citas}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="models:Cita">
                             <Border Classes="cita-card"
@@ -146,7 +153,8 @@
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
-            </ScrollViewer>
+                </ScrollViewer>
+            </Panel>
             
             <!-- Mensaje de error -->
             <Border Grid.Row="4"

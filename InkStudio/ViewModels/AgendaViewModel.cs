@@ -41,6 +41,30 @@ public partial class AgendaViewModel : ViewModelBase
     private VistaAgenda _vistaActual = VistaAgenda.Dia;
 
     /// <summary>
+    /// Se ejecuta cuando cambia VistaActual.
+    /// </summary>
+    partial void OnVistaActualChanged(VistaAgenda value)
+    {
+        OnPropertyChanged(nameof(MostrarCalendario));
+        OnPropertyChanged(nameof(MostrarLista));
+    }
+
+    /// <summary>
+    /// ViewModel del calendario visual.
+    /// </summary>
+    public CalendarViewModel CalendarVM { get; } = new();
+
+    /// <summary>
+    /// Indica si mostrar el calendario (vista Mes).
+    /// </summary>
+    public bool MostrarCalendario => VistaActual == VistaAgenda.Mes;
+
+    /// <summary>
+    /// Indica si mostrar la lista de citas (vista Día o Semana).
+    /// </summary>
+    public bool MostrarLista => VistaActual == VistaAgenda.Dia || VistaActual == VistaAgenda.Semana;
+
+    /// <summary>
     /// Lista de citas para el período seleccionado.
     /// </summary>
     [ObservableProperty]
@@ -293,6 +317,13 @@ public partial class AgendaViewModel : ViewModelBase
 
             Citas = new ObservableCollection<Cita>(listaOrdenada);
             TotalCitas = listaOrdenada.Count;
+
+            // Actualizar calendario visual si estamos en vista Mes
+            if (VistaActual == VistaAgenda.Mes)
+            {
+                var fechaCalendario = FechaSeleccionada ?? DateTimeOffset.Now.Date;
+                CalendarVM.CargarMes(fechaCalendario, listaOrdenada);
+            }
 
             var fechaLog = FechaSeleccionada ?? DateTimeOffset.Now.Date;
             Log.Debug("Citas cargadas: {Count} citas para {Vista} del {Fecha}", 
