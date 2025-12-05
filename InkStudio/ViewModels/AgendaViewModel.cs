@@ -280,12 +280,12 @@ public partial class AgendaViewModel : ViewModelBase
                 query = query.Where(c => c.Estado == FiltroEstado.Value);
             }
 
+            // Cargar sin ordenar por HoraInicio (SQLite no soporta TimeSpan en OrderBy)
             var lista = await query
                 .OrderBy(c => c.Fecha)
-                .ThenBy(c => c.HoraInicio)
                 .ToListAsync();
 
-            // Ordenar en memoria por HoraInicio (SQLite no soporta TimeSpan en OrderBy)
+            // Ordenar en memoria por HoraInicio
             var listaOrdenada = lista
                 .OrderBy(c => c.Fecha)
                 .ThenBy(c => c.HoraInicio)
