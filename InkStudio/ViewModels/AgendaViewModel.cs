@@ -32,7 +32,7 @@ public partial class AgendaViewModel : ViewModelBase
     /// Fecha actualmente seleccionada en el calendario.
     /// </summary>
     [ObservableProperty]
-    private DateTime _fechaSeleccionada = DateTime.Today;
+    private DateTime? _fechaSeleccionada = DateTime.Today;
 
     /// <summary>
     /// Modo de vista: Día, Semana o Mes.
@@ -172,7 +172,14 @@ public partial class AgendaViewModel : ViewModelBase
     [RelayCommand]
     private void DiaAnterior()
     {
-        FechaSeleccionada = FechaSeleccionada.AddDays(-1);
+        if (FechaSeleccionada.HasValue)
+        {
+            FechaSeleccionada = FechaSeleccionada.Value.AddDays(-1);
+        }
+        else
+        {
+            FechaSeleccionada = DateTime.Today.AddDays(-1);
+        }
         _ = CargarCitas();
     }
 
@@ -182,7 +189,14 @@ public partial class AgendaViewModel : ViewModelBase
     [RelayCommand]
     private void DiaSiguiente()
     {
-        FechaSeleccionada = FechaSeleccionada.AddDays(1);
+        if (FechaSeleccionada.HasValue)
+        {
+            FechaSeleccionada = FechaSeleccionada.Value.AddDays(1);
+        }
+        else
+        {
+            FechaSeleccionada = DateTime.Today.AddDays(1);
+        }
         _ = CargarCitas();
     }
 
@@ -228,26 +242,29 @@ public partial class AgendaViewModel : ViewModelBase
             Cargando = true;
             MensajeError = string.Empty;
 
+            // Si no hay fecha seleccionada, usar hoy
+            var fecha = FechaSeleccionada ?? DateTime.Today;
+
             DateTime inicio, fin;
 
             switch (VistaActual)
             {
                 case VistaAgenda.Dia:
-                    inicio = FechaSeleccionada.Date;
+                    inicio = fecha.Date;
                     fin = inicio.AddDays(1);
                     break;
                 case VistaAgenda.Semana:
                     // Lunes de la semana
-                    var diasDesdeLunes = ((int)FechaSeleccionada.DayOfWeek + 6) % 7;
-                    inicio = FechaSeleccionada.Date.AddDays(-diasDesdeLunes);
+                    var diasDesdeLunes = ((int)fecha.DayOfWeek + 6) % 7;
+                    inicio = fecha.Date.AddDays(-diasDesdeLunes);
                     fin = inicio.AddDays(7);
                     break;
                 case VistaAgenda.Mes:
-                    inicio = new DateTime(FechaSeleccionada.Year, FechaSeleccionada.Month, 1);
+                    inicio = new DateTime(fecha.Year, fecha.Month, 1);
                     fin = inicio.AddMonths(1);
                     break;
                 default:
-                    inicio = FechaSeleccionada.Date;
+                    inicio = fecha.Date;
                     fin = inicio.AddDays(1);
                     break;
             }
@@ -276,8 +293,9 @@ public partial class AgendaViewModel : ViewModelBase
             Citas = new ObservableCollection<Cita>(listaOrdenada);
             TotalCitas = listaOrdenada.Count;
 
+            var fechaLog = FechaSeleccionada ?? DateTime.Today;
             Log.Debug("Citas cargadas: {Count} citas para {Vista} del {Fecha}", 
-                TotalCitas, VistaActual, FechaSeleccionada.ToString("dd/MM/yyyy"));
+                TotalCitas, VistaActual, fechaLog.ToString("dd/MM/yyyy"));
         }
         catch (Exception ex)
         {
@@ -324,7 +342,7 @@ public partial class AgendaViewModel : ViewModelBase
     private void NuevaCita()
     {
         LimpiarFormulario();
-        FechaCita = FechaSeleccionada;
+        FechaCita = FechaSeleccionada ?? DateTime.Today;
         EsEdicion = false;
         TituloFormulario = "✨ Nueva Cita";
         MostrarFormulario = true;
