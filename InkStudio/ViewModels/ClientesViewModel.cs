@@ -7,6 +7,7 @@ using CommunityToolkit.Mvvm.Input;
 using Microsoft.EntityFrameworkCore;
 using InkStudio.Data;
 using InkStudio.Models;
+using Serilog;
 
 namespace InkStudio.ViewModels;
 
@@ -119,6 +120,7 @@ public partial class ClientesViewModel : ViewModelBase
     {
         try
         {
+            Log.Debug("Cargando lista de clientes");
             Cargando = true;
             MensajeError = string.Empty;
 
@@ -130,9 +132,11 @@ public partial class ClientesViewModel : ViewModelBase
 
             Clientes = new ObservableCollection<Cliente>(lista);
             TotalClientes = lista.Count;
+            Log.Information("Clientes cargados: {Count} clientes activos", lista.Count);
         }
         catch (Exception ex)
         {
+            Log.Error(ex, "Error al cargar clientes desde la base de datos");
             MensajeError = $"Error al cargar clientes: {ex.Message}";
         }
         finally
@@ -158,6 +162,7 @@ public partial class ClientesViewModel : ViewModelBase
                 return;
             }
 
+            Log.Debug("Buscando clientes con término: {Termino}", TextoBusqueda);
             var busqueda = TextoBusqueda.ToLower();
             var lista = await _db.Clientes
                 .Where(c => c.Activo && (
@@ -171,9 +176,11 @@ public partial class ClientesViewModel : ViewModelBase
 
             Clientes = new ObservableCollection<Cliente>(lista);
             TotalClientes = lista.Count;
+            Log.Information("Búsqueda completada: {Count} resultados para '{Termino}'", lista.Count, TextoBusqueda);
         }
         catch (Exception ex)
         {
+            Log.Error(ex, "Error al buscar clientes con término: {Termino}", TextoBusqueda);
             MensajeError = $"Error en la búsqueda: {ex.Message}";
         }
         finally
@@ -238,6 +245,8 @@ public partial class ClientesViewModel : ViewModelBase
             if (EsEdicion && ClienteSeleccionado != null)
             {
                 // Actualizar cliente existente
+                Log.Information("Actualizando cliente ID: {ClienteId}, Nombre: {Nombre}", 
+                    ClienteSeleccionado.Id, Nombre);
                 ClienteSeleccionado.Nombre = Nombre.Trim();
                 ClienteSeleccionado.Apellidos = Apellidos.Trim();
                 ClienteSeleccionado.Telefono = Telefono.Trim();
@@ -250,6 +259,8 @@ public partial class ClientesViewModel : ViewModelBase
             else
             {
                 // Crear nuevo cliente
+                Log.Information("Creando nuevo cliente: {Nombre} {Apellidos}, Tel: {Telefono}", 
+                    Nombre, Apellidos, Telefono);
                 var nuevoCliente = new Cliente
                 {
                     Nombre = Nombre.Trim(),
@@ -267,16 +278,19 @@ public partial class ClientesViewModel : ViewModelBase
             }
 
             await _db.SaveChangesAsync();
+            Log.Information("Cliente guardado exitosamente");
             
             MostrarFormulario = false;
             await CargarClientes();
         }
         catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("UNIQUE") == true)
         {
+            Log.Warning("Intento de crear cliente con teléfono duplicado: {Telefono}", Telefono);
             MensajeError = "Ya existe un cliente con ese teléfono";
         }
         catch (Exception ex)
         {
+            Log.Error(ex, "Error al guardar cliente. Nombre: {Nombre}, Tel: {Telefono}", Nombre, Telefono);
             MensajeError = $"Error al guardar: {ex.Message}";
         }
         finally
@@ -295,17 +309,21 @@ public partial class ClientesViewModel : ViewModelBase
 
         try
         {
+            Log.Warning("Eliminando (desactivando) cliente ID: {ClienteId}, Nombre: {Nombre}", 
+                ClienteSeleccionado.Id, ClienteSeleccionado.NombreCompleto);
             Cargando = true;
             
             // Soft delete (solo desactivamos)
             ClienteSeleccionado.Activo = false;
             await _db.SaveChangesAsync();
             
+            Log.Information("Cliente eliminado exitosamente: ID {ClienteId}", ClienteSeleccionado.Id);
             MostrarFormulario = false;
             await CargarClientes();
         }
         catch (Exception ex)
         {
+            Log.Error(ex, "Error al eliminar cliente ID: {ClienteId}", ClienteSeleccionado?.Id);
             MensajeError = $"Error al eliminar: {ex.Message}";
         }
         finally

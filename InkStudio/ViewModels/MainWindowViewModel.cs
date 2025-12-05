@@ -1,5 +1,6 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using InkStudio.Services;
 
 namespace InkStudio.ViewModels;
 
@@ -20,6 +21,11 @@ public partial class MainWindowViewModel : ViewModelBase
     /// ViewModel de gestión de clientes.
     /// </summary>
     public ClientesViewModel ClientesVM { get; } = new();
+
+    /// <summary>
+    /// ViewModel para visualización de logs.
+    /// </summary>
+    public LogsViewModel LogsVM { get; } = new();
 
     // TODO: Añadir estos ViewModels cuando se creen las vistas
     // public AgendaViewModel AgendaVM { get; } = new();
@@ -83,6 +89,25 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         VistaActual = "Configuracion";
         // TODO: Implementar vista de Configuración
+    }
+
+    /// <summary>
+    /// Navega a la vista de Logs.
+    /// </summary>
+    [RelayCommand]
+    private void IrALogs()
+    {
+        VistaActual = "Logs";
+    }
+
+    /// <summary>
+    /// Abre la carpeta de logs en el explorador de archivos.
+    /// Útil para diagnosticar problemas.
+    /// </summary>
+    [RelayCommand]
+    private void AbrirCarpetaLogs()
+    {
+        LoggingService.AbrirCarpetaLogs();
     }
 
     #endregion

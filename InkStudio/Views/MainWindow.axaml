@@ -91,16 +91,24 @@
                         Background="#2a2a3e" 
                         Margin="20,20"/>
                 
-                <!-- Configuración (abajo) -->
-                <Button Classes="nav-btn" 
-                        DockPanel.Dock="Bottom" 
-                        Margin="8,0,8,20"
-                        Command="{Binding IrAConfiguracionCommand}">
-                    <StackPanel Orientation="Horizontal" Spacing="12">
-                        <TextBlock Text="⚙️" FontSize="18"/>
-                        <TextBlock Text="Configuración" VerticalAlignment="Center"/>
-                    </StackPanel>
-                </Button>
+                <!-- Configuración y utilidades (abajo) -->
+                <StackPanel DockPanel.Dock="Bottom" Margin="8,0,8,20">
+                    <Button Classes="nav-btn" 
+                            Command="{Binding IrAConfiguracionCommand}">
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <TextBlock Text="⚙️" FontSize="18"/>
+                            <TextBlock Text="Configuración" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Classes="nav-btn" 
+                            Command="{Binding IrALogsCommand}"
+                            ToolTip.Tip="Ver logs del sistema para diagnóstico">
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <TextBlock Text="📋" FontSize="18"/>
+                            <TextBlock Text="Logs" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
                 
                 <!-- Espaciador -->
                 <Border/>
@@ -120,6 +128,10 @@
                 <!-- Clientes -->
                 <views:ClientesView DataContext="{Binding ClientesVM}"
                                     IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).VistaActual, Converter={StaticResource EqualConverter}, ConverterParameter=Clientes}"/>
+                
+                <!-- Logs -->
+                <views:LogsView DataContext="{Binding LogsVM}"
+                                IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).VistaActual, Converter={StaticResource EqualConverter}, ConverterParameter=Logs}"/>
                 
                 <!-- Placeholder para vistas no implementadas -->
                 <StackPanel IsVisible="{Binding VistaActual, Converter={StaticResource EqualConverter}, ConverterParameter=Agenda}"

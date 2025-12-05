@@ -7,6 +7,7 @@ using CommunityToolkit.Mvvm.Input;
 using Microsoft.EntityFrameworkCore;
 using InkStudio.Data;
 using InkStudio.Models;
+using Serilog;
 
 namespace InkStudio.ViewModels;
 
@@ -120,10 +121,20 @@ public partial class DashboardViewModel : ViewModelBase
     [RelayCommand]
     private async Task CargarDatos()
     {
-        await CargarCitasHoy();
-        await CargarEstadisticas();
-        await CargarAlertas();
-        await CargarConfiguracion();
+        Log.Debug("Cargando datos del Dashboard");
+        try
+        {
+            await CargarCitasHoy();
+            await CargarEstadisticas();
+            await CargarAlertas();
+            await CargarConfiguracion();
+            Log.Debug("Dashboard cargado exitosamente");
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error al cargar datos del Dashboard");
+            throw;
+        }
     }
 
     /// <summary>
@@ -133,11 +144,20 @@ public partial class DashboardViewModel : ViewModelBase
     [RelayCommand]
     private async Task MarcarCitaConfirmada(Cita cita)
     {
-        if (cita.Estado == EstadoCita.Pendiente)
+        try
         {
-            cita.Estado = EstadoCita.Confirmada;
-            await _db.SaveChangesAsync();
-            await CargarDatos();
+            if (cita.Estado == EstadoCita.Pendiente)
+            {
+                cita.Estado = EstadoCita.Confirmada;
+                await _db.SaveChangesAsync();
+                Log.Information("Cita {CitaId} marcada como confirmada", cita.Id);
+                await CargarDatos();
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error al confirmar cita {CitaId}", cita.Id);
+            throw;
         }
     }
 
@@ -148,11 +168,20 @@ public partial class DashboardViewModel : ViewModelBase
     [RelayCommand]
     private async Task MarcarCitaCompletada(Cita cita)
     {
-        if (cita.Estado == EstadoCita.Confirmada || cita.Estado == EstadoCita.EnProceso)
+        try
         {
-            cita.Estado = EstadoCita.Completada;
-            await _db.SaveChangesAsync();
-            await CargarDatos();
+            if (cita.Estado == EstadoCita.Confirmada || cita.Estado == EstadoCita.EnProceso)
+            {
+                cita.Estado = EstadoCita.Completada;
+                await _db.SaveChangesAsync();
+                Log.Information("Cita {CitaId} marcada como completada", cita.Id);
+                await CargarDatos();
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error al completar cita {CitaId}", cita.Id);
+            throw;
         }
     }
 
@@ -184,17 +213,27 @@ public partial class DashboardViewModel : ViewModelBase
     /// </remarks>
     private async Task CargarCitasHoy()
     {
-        var hoy = DateTime.Today;
-        var citas = await _db.Citas
-            .Include(c => c.Cliente)
-            .Where(c => c.Fecha.Date == hoy)
-            .ToListAsync();
+        try
+        {
+            var hoy = DateTime.Today;
+            var citas = await _db.Citas
+                .Include(c => c.Cliente)
+                .Where(c => c.Fecha.Date == hoy)
+                .ToListAsync();
 
-        // Ordenar en memoria (SQLite no soporta OrderBy con TimeSpan)
-        var citasOrdenadas = citas.OrderBy(c => c.HoraInicio).ToList();
+            // Ordenar en memoria (SQLite no soporta OrderBy con TimeSpan)
+            var citasOrdenadas = citas.OrderBy(c => c.HoraInicio).ToList();
 
-        CitasHoy = new ObservableCollection<Cita>(citasOrdenadas);
-        CitasHoyCount = citasOrdenadas.Count;
+            CitasHoy = new ObservableCollection<Cita>(citasOrdenadas);
+            CitasHoyCount = citasOrdenadas.Count;
+            
+            Log.Debug("Citas de hoy cargadas: {Count} citas", citasOrdenadas.Count);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error al cargar citas de hoy");
+            throw;
+        }
     }
 
     /// <summary>
