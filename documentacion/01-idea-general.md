@@ -1,0 +1,461 @@
+# InkStudio CRM - Documento de Idea General
+
+> **Versión:** 1.0  
+> **Fecha:** Diciembre 2024  
+> **Autor:** Jose Vallejo  
+> **Estado:** Planificación
+
+---
+
+## 📋 Índice
+
+1. [Descripción del Proyecto](#-descripción-del-proyecto)
+2. [Público Objetivo](#-público-objetivo)
+3. [Stack Tecnológico](#-stack-tecnológico)
+4. [Arquitectura](#-arquitectura)
+5. [Estructura del Proyecto](#-estructura-del-proyecto)
+6. [Módulos Funcionales](#-módulos-funcionales)
+7. [Modelo de Datos](#-modelo-de-datos)
+8. [Interfaz de Usuario](#-interfaz-de-usuario)
+9. [Seguridad (Fase Posterior)](#-seguridad-fase-posterior)
+10. [Entorno de Desarrollo](#-entorno-de-desarrollo)
+
+---
+
+## 📝 Descripción del Proyecto
+
+**InkStudio CRM** es una aplicación de escritorio para Windows diseñada específicamente para la gestión de clientes en **estudios de tatuajes**.
+
+### Características principales:
+
+- **100% Local:** Base de datos SQLite instalada junto con la aplicación
+- **Sin dependencias externas:** No requiere conexión a internet ni servidores
+- **Instalador único:** Ejecutable de instalación que incluye todo lo necesario
+- **Interfaz moderna:** Diseño Windows 11 con tema Fluent
+
+### Problema que resuelve:
+
+Muchos estudios de tatuajes gestionan sus clientes con libretas, Excel, o herramientas genéricas no adaptadas a sus necesidades. InkStudio CRM ofrece una solución simple, profesional y específica para tatuadores.
+
+---
+
+## 🎯 Público Objetivo
+
+**Estudios de tatuajes** y tatuadores independientes.
+
+### Necesidades específicas del sector:
+
+- Galería de trabajos realizados
+- Consentimientos informados
+- Historial de diseños por cliente
+- Gestión de citas y sesiones
+- Registro de zonas tatuadas
+
+### Perfil del usuario:
+
+- Tatuador independiente o estudio pequeño (1-5 artistas)
+- Conocimientos informáticos básicos
+- Necesita solución simple y rápida
+- No quiere depender de suscripciones mensuales
+
+---
+
+## 🛠️ Stack Tecnológico
+
+### Decisiones tomadas:
+
+| Componente | Tecnología | Justificación |
+|------------|------------|---------------|
+| **Framework UI** | Avalonia UI 11 | Multiplataforma, moderno, funciona en Cursor/VS Code |
+| **Tema visual** | FluentAvalonia | Aspecto Windows 11 nativo, profesional |
+| **Patrón arquitectura** | MVVM | Simple, probado, fácil de mantener |
+| **MVVM Toolkit** | CommunityToolkit.Mvvm | Source Generators, poco boilerplate |
+| **Base de datos** | SQLite | Local, sin servidor, empaquetable |
+| **ORM** | Entity Framework Core 8 | Maduro, migraciones automáticas |
+| **Lenguaje** | C# 12 / .NET 8 | Moderno, rendimiento nativo |
+| **IDE** | Cursor | Desarrollo completo sin Visual Studio |
+
+### Paquetes NuGet principales:
+
+```xml
+<!-- UI -->
+<PackageReference Include="Avalonia" Version="11.2.1" />
+<PackageReference Include="Avalonia.Desktop" Version="11.2.1" />
+<PackageReference Include="Avalonia.Themes.Fluent" Version="11.2.1" />
+<PackageReference Include="FluentAvaloniaUI" Version="2.1.0" />
+
+<!-- MVVM -->
+<PackageReference Include="CommunityToolkit.Mvvm" Version="8.3.2" />
+
+<!-- Base de datos -->
+<PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.10" />
+<PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.10" />
+```
+
+---
+
+## 📐 Arquitectura
+
+### Patrón: MVVM (Model-View-ViewModel)
+
+Se eligió una arquitectura **simple y directa**, evitando sobre-ingeniería como Clean Architecture, que sería excesiva para un proyecto desarrollado por una sola persona.
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         ARQUITECTURA                            │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│   ┌─────────────┐     ┌─────────────┐     ┌─────────────┐      │
+│   │             │     │             │     │             │      │
+│   │    VIEW     │ ←── │  VIEWMODEL  │ ←── │    MODEL    │      │
+│   │   (XAML)    │     │    (C#)     │     │  (Entidad)  │      │
+│   │             │     │             │     │             │      │
+│   └─────────────┘     └─────────────┘     └─────────────┘      │
+│         ↑                   ↑                   ↑               │
+│         │                   │                   │               │
+│    Interfaz de         Lógica de           Datos y             │
+│     usuario           presentación         reglas              │
+│                             │                                   │
+│                             ↓                                   │
+│                    ┌─────────────────┐                         │
+│                    │   DbContext     │                         │
+│                    │   (EF Core)     │                         │
+│                    └────────┬────────┘                         │
+│                             │                                   │
+│                             ↓                                   │
+│                    ┌─────────────────┐                         │
+│                    │     SQLite      │                         │
+│                    │   (database.db) │                         │
+│                    └─────────────────┘                         │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Principios de diseño:
+
+1. **Simplicidad:** Un solo proyecto, carpetas organizadas
+2. **Pragmatismo:** EF Core directo en ViewModels (sin capas innecesarias)
+3. **Mantenibilidad:** Código fácil de entender hoy y dentro de 2 años
+4. **Escalabilidad gradual:** Añadir complejidad solo cuando se necesite
+
+---
+
+## 📁 Estructura del Proyecto
+
+```
+InkStudio/
+│
+├── 📁 Assets/                    # Recursos estáticos
+│   ├── 📁 Fonts/                 # Fuentes personalizadas
+│   ├── 📁 Icons/                 # Iconos de la aplicación
+│   └── app-icon.ico              # Icono principal
+│
+├── 📁 Models/                    # Entidades de datos
+│   ├── Cliente.cs
+│   ├── Cita.cs
+│   ├── Trabajo.cs
+│   ├── Nota.cs
+│   └── Usuario.cs
+│
+├── 📁 Data/                      # Capa de datos
+│   ├── CrmDbContext.cs           # Contexto de EF Core
+│   └── 📁 Migrations/            # Migraciones de BD
+│
+├── 📁 ViewModels/                # Lógica de presentación
+│   ├── ViewModelBase.cs          # Clase base
+│   ├── MainViewModel.cs          # ViewModel principal
+│   ├── DashboardViewModel.cs
+│   ├── ClientesViewModel.cs
+│   ├── ClienteDetalleViewModel.cs
+│   ├── AgendaViewModel.cs
+│   └── ConfiguracionViewModel.cs
+│
+├── 📁 Views/                     # Interfaces de usuario (XAML)
+│   ├── MainWindow.axaml
+│   ├── DashboardView.axaml
+│   ├── ClientesView.axaml
+│   ├── ClienteDetalleView.axaml
+│   ├── AgendaView.axaml
+│   └── ConfiguracionView.axaml
+│
+├── 📁 Services/                  # Servicios auxiliares
+│   ├── NavigationService.cs      # Navegación entre vistas
+│   └── DialogService.cs          # Diálogos y confirmaciones
+│
+├── 📁 Converters/                # Conversores para XAML
+│   └── BoolToVisibilityConverter.cs
+│
+├── App.axaml                     # Configuración de la app
+├── App.axaml.cs                  # Código de inicio
+├── Program.cs                    # Entry point
+└── MiCRM.csproj                  # Archivo de proyecto
+```
+
+---
+
+## 🧩 Módulos Funcionales
+
+### 1. Dashboard (Pantalla principal)
+
+| Elemento | Descripción |
+|----------|-------------|
+| Resumen del día | Citas programadas para hoy |
+| Estadísticas | Total clientes, citas del mes, ingresos |
+| Accesos rápidos | Nuevo cliente, nueva cita |
+| Alertas | Citas pendientes de confirmar |
+
+### 2. Gestión de Clientes
+
+| Funcionalidad | Descripción |
+|---------------|-------------|
+| Listado | Vista de todos los clientes con búsqueda |
+| Ficha completa | Datos personales, historial, notas |
+| CRUD | Crear, editar, eliminar clientes |
+| Búsqueda | Por nombre, teléfono, email |
+| Etiquetas | VIP, nuevo, frecuente, etc. |
+
+### 3. Agenda / Citas
+
+| Funcionalidad | Descripción |
+|---------------|-------------|
+| Calendario | Vista día, semana, mes |
+| Crear cita | Asociar cliente, duración, descripción |
+| Estados | Pendiente, confirmada, completada, cancelada |
+| Recordatorios | Visual en dashboard |
+
+### 4. Trabajos / Galería
+
+| Funcionalidad | Descripción |
+|---------------|-------------|
+| Registro | Tatuaje realizado con fotos (antes/después) |
+| Galería | Portfolio de trabajos por cliente |
+| Detalles | Zona del cuerpo, estilo, precio, duración |
+| Consentimiento | Documento firmado asociado al trabajo |
+
+### 5. Configuración
+
+| Funcionalidad | Descripción |
+|---------------|-------------|
+| Datos negocio | Nombre, logo, información |
+| Backup | Exportar/importar base de datos |
+| Tema | Claro/oscuro |
+| Acerca de | Versión, créditos |
+
+---
+
+## 🗄️ Modelo de Datos
+
+### Diagrama de entidades:
+
+```
+┌─────────────────┐       ┌─────────────────┐
+│     CLIENTE     │       │      CITA       │
+├─────────────────┤       ├─────────────────┤
+│ Id              │───┐   │ Id              │
+│ Nombre          │   │   │ Fecha           │
+│ Apellidos       │   │   │ Duracion        │
+│ Telefono        │   └──→│ ClienteId (FK)  │
+│ Email           │       │ Descripcion     │
+│ FechaRegistro   │       │ Estado          │
+│ EsVip           │       └─────────────────┘
+│ Notas           │
+└────────┬────────┘       ┌─────────────────┐
+         │                │     TRABAJO     │
+         │                ├─────────────────┤
+         │                │ Id              │
+         └───────────────→│ ClienteId (FK)  │
+                          │ Titulo          │
+                          │ Descripcion     │
+                          │ Precio          │
+                          │ Fecha           │
+                          │ Fotos (JSON)    │
+                          └─────────────────┘
+```
+
+### Entidades principales:
+
+```csharp
+public class Cliente
+{
+    public int Id { get; set; }
+    public string Nombre { get; set; }
+    public string Apellidos { get; set; }
+    public string Telefono { get; set; }
+    public string? Email { get; set; }
+    public DateTime FechaRegistro { get; set; }
+    public bool EsVip { get; set; }
+    public string? Notas { get; set; }
+    
+    // Navegación
+    public List<Cita> Citas { get; set; }
+    public List<Trabajo> Trabajos { get; set; }
+}
+
+public class Cita
+{
+    public int Id { get; set; }
+    public DateTime Fecha { get; set; }
+    public TimeSpan Duracion { get; set; }
+    public string Descripcion { get; set; }
+    public EstadoCita Estado { get; set; }
+    
+    public int ClienteId { get; set; }
+    public Cliente Cliente { get; set; }
+}
+
+public class Trabajo
+{
+    public int Id { get; set; }
+    public string Titulo { get; set; }
+    public string? Descripcion { get; set; }
+    public decimal Precio { get; set; }
+    public DateTime Fecha { get; set; }
+    public string? FotosJson { get; set; } // Lista de rutas serializada
+    
+    public int ClienteId { get; set; }
+    public Cliente Cliente { get; set; }
+}
+
+public enum EstadoCita
+{
+    Pendiente,
+    Confirmada,
+    Completada,
+    Cancelada
+}
+```
+
+---
+
+## 🎨 Interfaz de Usuario
+
+### Diseño general:
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│  🖋️ InkStudio CRM - [Nombre del estudio]                         _ □ ✕     │
+├─────────────┬───────────────────────────────────────────────────────┤
+│             │                                                       │
+│  🏠 Dashboard│                                                       │
+│             │              CONTENIDO PRINCIPAL                      │
+│  👥 Clientes │              (Vista actual)                           │
+│             │                                                       │
+│  📅 Agenda  │                                                       │
+│             │                                                       │
+│  💼 Trabajos │                                                       │
+│             │                                                       │
+│  ─────────  │                                                       │
+│             │                                                       │
+│  ⚙️ Config  │                                                       │
+│             │                                                       │
+└─────────────┴───────────────────────────────────────────────────────┘
+```
+
+### Características visuales (FluentAvalonia):
+
+- ✅ Tema Windows 11 (Fluent Design)
+- ✅ Soporte tema claro/oscuro
+- ✅ NavigationView (menú lateral)
+- ✅ Bordes redondeados
+- ✅ Iconos Fluent
+- ✅ Efecto Mica (si el sistema lo soporta)
+
+---
+
+## 🔐 Seguridad (Fase Posterior)
+
+> **Nota:** La seguridad se implementará en una fase posterior del desarrollo.
+
+### Capas de seguridad planificadas:
+
+1. **Autenticación:** Login con usuario/contraseña (BCrypt)
+2. **Cifrado de BD:** SQLCipher (AES-256)
+3. **Cifrado de campos sensibles:** Datos personales cifrados individualmente
+4. **Backup cifrado:** Copias de seguridad protegidas
+5. **Auditoría:** Log de acciones del usuario
+
+---
+
+## 💻 Entorno de Desarrollo
+
+### Requisitos:
+
+| Requisito | Versión |
+|-----------|---------|
+| .NET SDK | 8.0 o superior |
+| IDE | Cursor / VS Code |
+| Sistema operativo | Windows 10/11 |
+
+### Configuración inicial:
+
+```powershell
+# Verificar .NET instalado
+dotnet --version
+
+# Instalar workload de Avalonia (si no está)
+dotnet new install Avalonia.Templates
+
+# Crear proyecto (cuando empecemos)
+dotnet new avalonia.app -n InkStudio -o InkStudio
+```
+
+### Extensiones recomendadas para Cursor:
+
+- C# Dev Kit (Microsoft)
+- Avalonia for VS Code
+- XAML Language Support
+
+### Comandos útiles:
+
+```powershell
+# Compilar
+dotnet build
+
+# Ejecutar
+dotnet run
+
+# Crear migración de BD
+dotnet ef migrations add NombreMigracion
+
+# Aplicar migraciones
+dotnet ef database update
+```
+
+---
+
+## 📅 Próximos Pasos
+
+> **Ver documento detallado:** `02-roadmap.md`
+
+### Completado ✅
+- [x] Configurar proyecto Avalonia base
+- [x] Configurar FluentAvalonia
+- [x] Crear estructura de carpetas
+- [x] Implementar modelos de datos
+- [x] Configurar Entity Framework Core + SQLite
+- [x] Crear primera migración
+- [x] Implementar MainWindow con navegación
+- [x] Desarrollar Dashboard
+
+### Pendiente ⏳
+- [ ] Desarrollar módulo de Clientes (CRUD básico)
+- [ ] Desarrollar módulo de Agenda
+- [ ] Desarrollar módulo de Trabajos
+- [ ] Implementar Configuración
+- [ ] Pulir interfaz y UX
+- [ ] Implementar seguridad
+- [ ] Crear instalador
+
+---
+
+## 📚 Referencias
+
+- [Avalonia UI Documentation](https://docs.avaloniaui.net/)
+- [FluentAvalonia GitHub](https://github.com/amwx/FluentAvalonia)
+- [CommunityToolkit.Mvvm](https://learn.microsoft.com/en-us/dotnet/communitytoolkit/mvvm/)
+- [Entity Framework Core](https://learn.microsoft.com/en-us/ef/core/)
+
+---
+
+> **Documento creado como guía inicial del proyecto. Se actualizará conforme avance el desarrollo.**
+
