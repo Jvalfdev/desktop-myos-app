@@ -108,6 +108,23 @@ public partial class AgendaViewModel : ViewModelBase
     [ObservableProperty]
     private Cliente? _clienteSeleccionado;
 
+    /// <summary>
+    /// Se ejecuta cuando cambia ClienteSeleccionado.
+    /// </summary>
+    partial void OnClienteSeleccionadoChanged(Cliente? value)
+    {
+        if (value != null)
+        {
+            _ = VerificarConsentimientos(value.Id);
+        }
+        else
+        {
+            TieneConsentimientoRGPD = false;
+            MensajeConsentimiento = string.Empty;
+        }
+        OnPropertyChanged(nameof(ColorFondoConsentimiento));
+    }
+
     [ObservableProperty]
     private DateTimeOffset? _fechaCita = DateTimeOffset.Now.Date;
 
@@ -120,8 +137,31 @@ public partial class AgendaViewModel : ViewModelBase
     [ObservableProperty]
     private string _horaInicioString = "10:00";
 
+    /// <summary>
+    /// Se ejecuta cuando cambia HoraInicioString.
+    /// </summary>
+    partial void OnHoraInicioStringChanged(string value)
+    {
+        CalcularHoraFin();
+    }
+
+    /// <summary>
+    /// Hora de fin como string (HH:mm) para el formulario.
+    /// Se calcula automáticamente o se puede editar manualmente.
+    /// </summary>
+    [ObservableProperty]
+    private string _horaFinString = "11:00";
+
     [ObservableProperty]
     private int _duracionMinutos = 60;
+
+    /// <summary>
+    /// Se ejecuta cuando cambia DuracionMinutos.
+    /// </summary>
+    partial void OnDuracionMinutosChanged(int value)
+    {
+        CalcularHoraFin();
+    }
 
     [ObservableProperty]
     private TipoCita _tipoCita = TipoCita.Tatuaje;
@@ -134,6 +174,30 @@ public partial class AgendaViewModel : ViewModelBase
 
     [ObservableProperty]
     private string _notas = string.Empty;
+
+    #endregion
+
+    #region Propiedades - Consentimientos
+
+    /// <summary>
+    /// Indica si el cliente seleccionado tiene consentimiento RGPD firmado.
+    /// </summary>
+    [ObservableProperty]
+    private bool _tieneConsentimientoRGPD = false;
+
+    /// <summary>
+    /// Mensaje sobre el estado de los consentimientos del cliente.
+    /// </summary>
+    [ObservableProperty]
+    private string _mensajeConsentimiento = string.Empty;
+
+    /// <summary>
+    /// Color de fondo para el indicador de consentimiento.
+    /// Verde si tiene RGPD, rojo si no.
+    /// </summary>
+    public Avalonia.Media.SolidColorBrush ColorFondoConsentimiento => TieneConsentimientoRGPD 
+        ? new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#2d5a2d"))
+        : new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#5a2d2d"));
 
     #endregion
 
@@ -329,7 +393,14 @@ public partial class AgendaViewModel : ViewModelBase
             if (VistaActual == VistaAgenda.Mes || VistaActual == VistaAgenda.Semana)
             {
                 var fechaCalendario = FechaSeleccionada ?? DateTimeOffset.Now.Date;
-                CalendarVM.CargarMes(fechaCalendario, listaOrdenada);
+                if (VistaActual == VistaAgenda.Semana)
+                {
+                    CalendarVM.CargarSemana(fechaCalendario, listaOrdenada);
+                }
+                else
+                {
+                    CalendarVM.CargarMes(fechaCalendario, listaOrdenada);
+                }
                 
                 // Sincronizar la fecha seleccionada con el calendario
                 if (FechaSeleccionada.HasValue)
@@ -435,8 +506,8 @@ public partial class AgendaViewModel : ViewModelBase
                 return;
             }
 
-            // Parsear hora desde string
-            if (!TimeSpan.TryParse(HoraInicioString, out var horaParsed))
+            // Parsear hora de inicio desde string
+            if (!TimeSpan.TryParse(HoraInicioString, out var horaInicioParsed))
             {
                 // Intentar formato HH:mm
                 var parts = HoraInicioString.Split(':');
@@ -444,14 +515,66 @@ public partial class AgendaViewModel : ViewModelBase
                     int.TryParse(parts[0], out var hours) && 
                     int.TryParse(parts[1], out var minutes))
                 {
-                    horaParsed = new TimeSpan(hours, minutes, 0);
+                    horaInicioParsed = new TimeSpan(hours, minutes, 0);
                 }
                 else
                 {
-                    MensajeError = "Formato de hora inválido. Usa HH:mm (ej: 10:30)";
+                    MensajeError = "Formato de hora de inicio inválido. Usa HH:mm (ej: 10:30)";
                     return;
                 }
             }
+
+            // Parsear hora de fin desde string (si fue editada manualmente)
+            TimeSpan? horaFinParsed = null;
+            if (!string.IsNullOrWhiteSpace(HoraFinString))
+            {
+                if (TimeSpan.TryParse(HoraFinString, out var horaFin))
+                {
+                    horaFinParsed = horaFin;
+                }
+                else
+                {
+                    // Intentar formato HH:mm
+                    var partsFin = HoraFinString.Split(':');
+                    if (partsFin.Length == 2 &&
+                        int.TryParse(partsFin[0], out var hoursFin) &&
+                        int.TryParse(partsFin[1], out var minutesFin))
+                    {
+                        horaFinParsed = new TimeSpan(hoursFin, minutesFin, 0);
+                    }
+                }
+            }
+
+            // Si se editó la hora fin, recalcular duración
+            if (horaFinParsed.HasValue)
+            {
+                var nuevaDuracion = (int)(horaFinParsed.Value - horaInicioParsed).TotalMinutes;
+                if (nuevaDuracion > 0)
+                {
+                    DuracionMinutos = nuevaDuracion;
+                }
+                else
+                {
+                    MensajeError = "La hora de fin debe ser posterior a la hora de inicio";
+                    return;
+                }
+            }
+
+            // Validar que la hora fin sea mayor que la hora inicio
+            if (horaFinParsed.HasValue && horaFinParsed.Value <= horaInicioParsed)
+            {
+                MensajeError = "La hora de fin debe ser posterior a la hora de inicio";
+                return;
+            }
+
+            // Validar duración mínima
+            if (DuracionMinutos < 15)
+            {
+                MensajeError = "La duración mínima es de 15 minutos";
+                return;
+            }
+
+            var horaParsed = horaInicioParsed;
 
             Cargando = true;
             MensajeError = string.Empty;
@@ -585,11 +708,14 @@ public partial class AgendaViewModel : ViewModelBase
         HoraInicio = new TimeSpan(10, 0, 0);
         HoraInicioString = "10:00";
         DuracionMinutos = 60;
+        CalcularHoraFin(); // Calcular hora fin inicial
         TipoCita = TipoCita.Tatuaje;
         Descripcion = string.Empty;
         EstadoCita = EstadoCita.Pendiente;
         Notas = string.Empty;
         MensajeError = string.Empty;
+        TieneConsentimientoRGPD = false;
+        MensajeConsentimiento = string.Empty;
     }
 
     /// <summary>
@@ -603,11 +729,72 @@ public partial class AgendaViewModel : ViewModelBase
         HoraInicio = cita.HoraInicio;
         HoraInicioString = cita.HoraInicio.ToString(@"hh\:mm");
         DuracionMinutos = cita.DuracionMinutos;
+        CalcularHoraFin(); // Calcular hora fin basada en inicio y duración
         TipoCita = cita.TipoCita;
         Descripcion = cita.Descripcion ?? string.Empty;
         EstadoCita = cita.Estado;
         Notas = cita.Notas ?? string.Empty;
         MensajeError = string.Empty;
+    }
+
+    /// <summary>
+    /// Calcula la hora de fin basándose en la hora de inicio y la duración.
+    /// </summary>
+    private void CalcularHoraFin()
+    {
+        if (TimeSpan.TryParse(HoraInicioString, out var inicio))
+        {
+            var fin = inicio.Add(TimeSpan.FromMinutes(DuracionMinutos));
+            HoraFinString = fin.ToString(@"hh\:mm");
+        }
+        else
+        {
+            // Intentar parsear formato HH:mm manualmente
+            var parts = HoraInicioString.Split(':');
+            if (parts.Length == 2 &&
+                int.TryParse(parts[0], out var hours) &&
+                int.TryParse(parts[1], out var minutes))
+            {
+                var inicioManual = new TimeSpan(hours, minutes, 0);
+                var fin = inicioManual.Add(TimeSpan.FromMinutes(DuracionMinutos));
+                HoraFinString = fin.ToString(@"hh\:mm");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Verifica los consentimientos del cliente seleccionado.
+    /// </summary>
+    /// <param name="clienteId">ID del cliente a verificar.</param>
+    private async Task VerificarConsentimientos(int clienteId)
+    {
+        try
+        {
+            var consentimientos = await _db.Consentimientos
+                .Where(c => c.ClienteId == clienteId && c.Firmado)
+                .ToListAsync();
+
+            TieneConsentimientoRGPD = consentimientos
+                .Any(c => c.Tipo == TipoConsentimiento.RGPD);
+
+            if (!TieneConsentimientoRGPD)
+            {
+                MensajeConsentimiento = "⚠️ Cliente sin consentimiento RGPD firmado";
+            }
+            else
+            {
+                MensajeConsentimiento = "✅ Consentimiento RGPD verificado";
+            }
+
+            OnPropertyChanged(nameof(ColorFondoConsentimiento));
+            Log.Debug("Consentimientos verificados para cliente {ClienteId}: RGPD={TieneRGPD}",
+                clienteId, TieneConsentimientoRGPD);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error al verificar consentimientos para cliente {ClienteId}", clienteId);
+            MensajeConsentimiento = "⚠️ Error al verificar consentimientos";
+        }
     }
 
     #endregion

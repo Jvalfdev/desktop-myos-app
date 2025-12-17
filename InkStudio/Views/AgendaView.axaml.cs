@@ -47,4 +47,19 @@ public partial class AgendaView : UserControl
             }
         }
     }
+    
+    /// <summary>
+    /// Maneja el clic en el backdrop del modal para cerrarlo.
+    /// </summary>
+    private void OnModalBackdropClick(object? sender, PointerPressedEventArgs e)
+    {
+        // Solo cerrar si se hizo clic directamente en el backdrop (no en el modal)
+        if (sender is Border backdrop && e.Source == backdrop)
+        {
+            if (DataContext is AgendaViewModel vm)
+            {
+                vm.CancelarEdicionCommand.Execute(null);
+            }
+        }
+    }
 }

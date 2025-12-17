@@ -17,10 +17,48 @@ public partial class CalendarViewModel : ViewModelBase
     #region Propiedades
 
     /// <summary>
-    /// Fecha del mes actual mostrado (DateTime para el control Calendar nativo).
+    /// Fecha del inicio de la semana actual mostrada (lunes de la semana).
     /// </summary>
     [ObservableProperty]
-    private DateTime _mesActual = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
+    private DateTime _semanaActual;
+
+    /// <summary>
+    /// Fecha del mes actual mostrado (para compatibilidad con vista mensual).
+    /// </summary>
+    public DateTime MesActual
+    {
+        get => SemanaActual;
+        set
+        {
+            var daysFromMonday = ((int)value.DayOfWeek + 6) % 7;
+            SemanaActual = value.AddDays(-daysFromMonday);
+        }
+    }
+
+    /// <summary>
+    /// Se ejecuta cuando cambia la semana actual.
+    /// </summary>
+    partial void OnSemanaActualChanged(DateTime value)
+    {
+        OnPropertyChanged(nameof(SemanaActualTexto));
+    }
+
+    /// <summary>
+    /// Texto que muestra el rango de la semana actual.
+    /// </summary>
+    public string SemanaActualTexto
+    {
+        get
+        {
+            var inicio = SemanaActual;
+            var fin = inicio.AddDays(6);
+            if (inicio.Month == fin.Month)
+            {
+                return $"{inicio:dd} - {fin:dd MMMM yyyy}";
+            }
+            return $"{inicio:dd MMM} - {fin:dd MMM yyyy}";
+        }
+    }
 
     /// <summary>
     /// Fecha seleccionada en el calendario.
@@ -44,32 +82,66 @@ public partial class CalendarViewModel : ViewModelBase
     #region Comandos
 
     /// <summary>
-    /// Navega al mes anterior.
+    /// Navega a la semana anterior.
+    /// </summary>
+    [RelayCommand]
+    private void SemanaAnterior()
+    {
+        SemanaActual = SemanaActual.AddDays(-7);
+        ActualizarCitasPorFecha();
+    }
+
+    /// <summary>
+    /// Navega a la semana siguiente.
+    /// </summary>
+    [RelayCommand]
+    private void SemanaSiguiente()
+    {
+        SemanaActual = SemanaActual.AddDays(7);
+        ActualizarCitasPorFecha();
+    }
+
+    /// <summary>
+    /// Vuelve a la semana actual.
+    /// </summary>
+    [RelayCommand]
+    private void IrASemanaActual()
+    {
+        var today = DateTime.Today;
+        var daysFromMonday = ((int)today.DayOfWeek + 6) % 7; // Convertir Domingo=0 a Lunes=0
+        SemanaActual = today.AddDays(-daysFromMonday);
+        ActualizarCitasPorFecha();
+    }
+
+    /// <summary>
+    /// Navega al mes anterior (para compatibilidad con vista mensual).
     /// </summary>
     [RelayCommand]
     private void MesAnterior()
     {
-        MesActual = MesActual.AddMonths(-1);
+        SemanaActual = SemanaActual.AddMonths(-1);
         ActualizarCitasPorFecha();
     }
 
     /// <summary>
-    /// Navega al mes siguiente.
+    /// Navega al mes siguiente (para compatibilidad con vista mensual).
     /// </summary>
     [RelayCommand]
     private void MesSiguiente()
     {
-        MesActual = MesActual.AddMonths(1);
+        SemanaActual = SemanaActual.AddMonths(1);
         ActualizarCitasPorFecha();
     }
 
     /// <summary>
-    /// Vuelve al mes actual.
+    /// Vuelve al mes actual (para compatibilidad con vista mensual).
     /// </summary>
     [RelayCommand]
     private void IrAMesActual()
     {
-        MesActual = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
+        var today = DateTime.Today;
+        var daysFromMonday = ((int)today.DayOfWeek + 6) % 7;
+        SemanaActual = today.AddDays(-daysFromMonday);
         ActualizarCitasPorFecha();
     }
 
@@ -78,13 +150,29 @@ public partial class CalendarViewModel : ViewModelBase
     #region Métodos Públicos
 
     /// <summary>
-    /// Carga el calendario para el mes especificado.
+    /// Carga el calendario para la semana especificada.
+    /// </summary>
+    /// <param name="fecha">Fecha de la semana a mostrar.</param>
+    /// <param name="citas">Lista de citas para la semana.</param>
+    public void CargarSemana(DateTimeOffset fecha, IEnumerable<Cita> citas)
+    {
+        var fechaDateTime = fecha.DateTime;
+        var daysFromMonday = ((int)fechaDateTime.DayOfWeek + 6) % 7; // Convertir Domingo=0 a Lunes=0
+        SemanaActual = fechaDateTime.AddDays(-daysFromMonday).Date;
+        Citas = new ObservableCollection<Cita>(citas);
+        ActualizarCitasPorFecha();
+    }
+
+    /// <summary>
+    /// Carga el calendario para el mes especificado (compatibilidad).
     /// </summary>
     /// <param name="mes">Mes a mostrar.</param>
     /// <param name="citas">Lista de citas para el mes.</param>
     public void CargarMes(DateTimeOffset mes, IEnumerable<Cita> citas)
     {
-        MesActual = new DateTime(mes.Year, mes.Month, 1);
+        var fechaDateTime = mes.DateTime;
+        var daysFromMonday = ((int)fechaDateTime.DayOfWeek + 6) % 7;
+        SemanaActual = fechaDateTime.AddDays(-daysFromMonday).Date;
         Citas = new ObservableCollection<Cita>(citas);
         ActualizarCitasPorFecha();
     }

@@ -25,5 +25,11 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        
+        // Asegurar que la ventana se abra maximizada después de que se muestre
+        Opened += (sender, e) =>
+        {
+            WindowState = WindowState.Maximized;
+        };
     }
 }
