@@ -7,6 +7,7 @@ using CommunityToolkit.Mvvm.Input;
 using Microsoft.EntityFrameworkCore;
 using InkStudio.Data;
 using InkStudio.Models;
+using InkStudio.Services;
 using Serilog;
 
 namespace InkStudio.ViewModels;
@@ -108,12 +109,24 @@ public partial class ClientesViewModel : ViewModelBase
     [ObservableProperty]
     private int _totalClientes;
 
+    /// <summary>
+    /// Indica si se desea solicitar consentimiento de imágenes (opcional).
+    /// </summary>
+    [ObservableProperty]
+    private bool _solicitarConsentimientoImagenes = false;
+
+    /// <summary>
+    /// ViewModel del modal de firma de consentimientos.
+    /// </summary>
+    [ObservableProperty]
+    private ConsentimientoFirmaViewModel? _consentimientoFirmaVM;
+
     #endregion
 
     #region Comandos - Carga de Datos
 
     /// <summary>
-    /// Carga todos los clientes activos desde la base de datos.
+    /// Carga todos los clientes desde la base de datos.
     /// </summary>
     [RelayCommand]
     private async Task CargarClientes()
@@ -125,7 +138,6 @@ public partial class ClientesViewModel : ViewModelBase
             MensajeError = string.Empty;
 
             var lista = await _db.Clientes
-                .Where(c => c.Activo)
                 .OrderBy(c => c.Nombre)
                 .ThenBy(c => c.Apellidos)
                 .ToListAsync();
@@ -165,12 +177,12 @@ public partial class ClientesViewModel : ViewModelBase
             Log.Debug("Buscando clientes con término: {Termino}", TextoBusqueda);
             var busqueda = TextoBusqueda.ToLower();
             var lista = await _db.Clientes
-                .Where(c => c.Activo && (
+                .Where(c =>
                     c.Nombre.ToLower().Contains(busqueda) ||
                     c.Apellidos.ToLower().Contains(busqueda) ||
                     c.Telefono.Contains(busqueda) ||
                     (c.Email != null && c.Email.ToLower().Contains(busqueda))
-                ))
+                )
                 .OrderBy(c => c.Nombre)
                 .ToListAsync();
 
@@ -239,8 +251,36 @@ public partial class ClientesViewModel : ViewModelBase
                 return;
             }
 
+            // Validar teléfono único (solo para clientes activos)
+            var telefonoLimpio = Telefono.Trim();
+            if (!EsEdicion)
+            {
+                var existeTelefono = await _db.Clientes
+                    .AnyAsync(c => c.Telefono == telefonoLimpio && c.Activo);
+                
+                if (existeTelefono)
+                {
+                    MensajeError = "Ya existe un cliente activo con ese teléfono";
+                    return;
+                }
+            }
+            else if (ClienteSeleccionado != null && ClienteSeleccionado.Telefono != telefonoLimpio)
+            {
+                // Si está editando y cambió el teléfono, verificar que el nuevo no exista
+                var existeTelefono = await _db.Clientes
+                    .AnyAsync(c => c.Telefono == telefonoLimpio && c.Activo && c.Id != ClienteSeleccionado.Id);
+                
+                if (existeTelefono)
+                {
+                    MensajeError = "Ya existe un cliente activo con ese teléfono";
+                    return;
+                }
+            }
+
             Cargando = true;
             MensajeError = string.Empty;
+
+            Cliente clienteGuardado;
 
             if (EsEdicion && ClienteSeleccionado != null)
             {
@@ -255,6 +295,7 @@ public partial class ClientesViewModel : ViewModelBase
                 ClienteSeleccionado.FechaNacimiento = FechaNacimiento?.DateTime;
                 ClienteSeleccionado.Alergias = string.IsNullOrWhiteSpace(Alergias) ? null : Alergias.Trim();
                 ClienteSeleccionado.Notas = string.IsNullOrWhiteSpace(Notas) ? null : Notas.Trim();
+                clienteGuardado = ClienteSeleccionado;
             }
             else
             {
@@ -275,18 +316,65 @@ public partial class ClientesViewModel : ViewModelBase
                     Activo = true
                 };
                 _db.Clientes.Add(nuevoCliente);
+                clienteGuardado = nuevoCliente;
             }
 
             await _db.SaveChangesAsync();
             Log.Information("Cliente guardado exitosamente");
-            
-            MostrarFormulario = false;
+
+            // Para nuevos clientes, verificar y solicitar consentimientos
+            if (!EsEdicion)
+            {
+                // Recargar cliente desde BD para obtener el ID correcto
+                await _db.Entry(clienteGuardado).ReloadAsync();
+                
+                // Verificar si ya tiene RGPD (no debería tenerlo si es nuevo)
+                var tieneRGPD = await ConsentimientoService.ValidarConsentimientosRequeridos(clienteGuardado.Id);
+                
+                if (!tieneRGPD)
+                {
+                    // Cerrar formulario de cliente
+                    MostrarFormulario = false;
+                    
+                    // Abrir modal de firma RGPD
+                    if (ConsentimientoFirmaVM == null)
+                    {
+                        ConsentimientoFirmaVM = new ConsentimientoFirmaViewModel();
+                    }
+                    await ConsentimientoFirmaVM.AbrirModal(clienteGuardado, TipoConsentimiento.RGPD);
+                    
+                    // El modal se cierra automáticamente cuando se confirma la firma
+                }
+                else if (SolicitarConsentimientoImagenes)
+                {
+                    // Si marcó el checkbox de imágenes, abrir modal de imágenes
+                    MostrarFormulario = false;
+                    if (ConsentimientoFirmaVM == null)
+                    {
+                        ConsentimientoFirmaVM = new ConsentimientoFirmaViewModel();
+                    }
+                    await ConsentimientoFirmaVM.AbrirModal(clienteGuardado, TipoConsentimiento.Imagenes);
+                }
+                else
+                {
+                    // Si ya tiene RGPD y no quiere imágenes, solo cerrar
+                    MostrarFormulario = false;
+                }
+            }
+            else
+            {
+                // Para edición, solo cerrar
+                MostrarFormulario = false;
+            }
+
             await CargarClientes();
         }
-        catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("UNIQUE") == true)
+        catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("UNIQUE") == true || 
+                                            ex.Message.Contains("UNIQUE") == true)
         {
-            Log.Warning("Intento de crear cliente con teléfono duplicado: {Telefono}", Telefono);
-            MensajeError = "Ya existe un cliente con ese teléfono";
+            Log.Warning("Intento de crear cliente con teléfono duplicado: {Telefono}. Error: {Error}", 
+                Telefono, ex.Message);
+            MensajeError = "Ya existe un cliente con ese teléfono.";
         }
         catch (Exception ex)
         {
@@ -300,7 +388,8 @@ public partial class ClientesViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Elimina (desactiva) el cliente seleccionado.
+    /// Elimina permanentemente el cliente seleccionado de la base de datos.
+    /// También elimina todas sus citas, trabajos y consentimientos relacionados (cascada).
     /// </summary>
     [RelayCommand]
     private async Task EliminarCliente()
@@ -309,22 +398,87 @@ public partial class ClientesViewModel : ViewModelBase
 
         try
         {
-            Log.Warning("Eliminando (desactivando) cliente ID: {ClienteId}, Nombre: {Nombre}", 
+            Log.Warning("Eliminando permanentemente cliente ID: {ClienteId}, Nombre: {Nombre}", 
                 ClienteSeleccionado.Id, ClienteSeleccionado.NombreCompleto);
             Cargando = true;
             
-            // Soft delete (solo desactivamos)
-            ClienteSeleccionado.Activo = false;
+            // Eliminar permanentemente de la base de datos
+            // Las relaciones en cascada eliminarán automáticamente:
+            // - Todas las citas del cliente
+            // - Todos los trabajos del cliente
+            // - Todos los consentimientos del cliente
+            _db.Clientes.Remove(ClienteSeleccionado);
             await _db.SaveChangesAsync();
             
-            Log.Information("Cliente eliminado exitosamente: ID {ClienteId}", ClienteSeleccionado.Id);
+            Log.Information("Cliente eliminado permanentemente: ID {ClienteId}, Nombre: {Nombre}", 
+                ClienteSeleccionado.Id, ClienteSeleccionado.NombreCompleto);
+            
             MostrarFormulario = false;
+            ClienteSeleccionado = null;
             await CargarClientes();
         }
         catch (Exception ex)
         {
             Log.Error(ex, "Error al eliminar cliente ID: {ClienteId}", ClienteSeleccionado?.Id);
             MensajeError = $"Error al eliminar: {ex.Message}";
+        }
+        finally
+        {
+            Cargando = false;
+        }
+    }
+
+    /// <summary>
+    /// Elimina permanentemente TODOS los clientes de la base de datos.
+    /// ADVERTENCIA: Esta operación es irreversible y eliminará también todas las citas,
+    /// trabajos y consentimientos relacionados.
+    /// </summary>
+    [RelayCommand]
+    private async Task EliminarTodosLosClientes()
+    {
+        try
+        {
+            Cargando = true;
+            MensajeError = string.Empty;
+
+            // Contar clientes antes de eliminar
+            var totalClientes = await _db.Clientes.CountAsync();
+            
+            if (totalClientes == 0)
+            {
+                MensajeError = "No hay clientes para eliminar";
+                Cargando = false;
+                return;
+            }
+
+            Log.Warning("═══════════════════════════════════════════════════════");
+            Log.Warning("ELIMINANDO TODOS LOS CLIENTES DE LA BASE DE DATOS");
+            Log.Warning("Total de clientes a eliminar: {Total}", totalClientes);
+            Log.Warning("═══════════════════════════════════════════════════════");
+
+            // Eliminar todos los clientes
+            // Las relaciones en cascada eliminarán automáticamente:
+            // - Todas las citas de todos los clientes
+            // - Todos los trabajos de todos los clientes
+            // - Todos los consentimientos de todos los clientes
+            _db.Clientes.RemoveRange(_db.Clientes);
+            await _db.SaveChangesAsync();
+            
+            Log.Information("═══════════════════════════════════════════════════════");
+            Log.Information("TODOS LOS CLIENTES ELIMINADOS PERMANENTEMENTE");
+            Log.Information("Total eliminado: {Total} clientes", totalClientes);
+            Log.Information("═══════════════════════════════════════════════════════");
+            
+            MostrarFormulario = false;
+            ClienteSeleccionado = null;
+            await CargarClientes();
+            
+            MensajeError = $"✅ Se eliminaron {totalClientes} clientes permanentemente";
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error al eliminar todos los clientes");
+            MensajeError = $"Error al eliminar todos los clientes: {ex.Message}";
         }
         finally
         {
@@ -360,6 +514,7 @@ public partial class ClientesViewModel : ViewModelBase
         Alergias = string.Empty;
         Notas = string.Empty;
         MensajeError = string.Empty;
+        SolicitarConsentimientoImagenes = false;
     }
 
     /// <summary>

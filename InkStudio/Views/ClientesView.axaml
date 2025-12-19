@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:InkStudio.ViewModels"
              xmlns:models="using:InkStudio.Models"
+             xmlns:views="using:InkStudio.Views"
              x:Class="InkStudio.Views.ClientesView"
              x:DataType="vm:ClientesViewModel"
              Loaded="OnLoaded">
@@ -236,6 +237,13 @@
                                      Height="80"
                                      TextWrapping="Wrap"/>
 
+                            <!-- Consentimiento de imágenes (solo para nuevos clientes) -->
+                            <CheckBox IsVisible="{Binding !EsEdicion}"
+                                      IsChecked="{Binding SolicitarConsentimientoImagenes}"
+                                      Content="📸 Solicitar consentimiento de uso de imágenes (opcional)"
+                                      Margin="0,16,0,0"
+                                      FontSize="13"/>
+
                             <!-- Mensaje de error -->
                             <Border IsVisible="{Binding MensajeError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                                     Background="#3d2a2a"
@@ -293,6 +301,9 @@
                 <TextBlock Text="Cargando..." Margin="0,10,0,0"/>
             </StackPanel>
         </Border>
+
+        <!-- Modal de firma de consentimientos -->
+        <views:ConsentimientoFirmaView DataContext="{Binding ConsentimientoFirmaVM}"/>
         
     </Grid>
 

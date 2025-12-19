@@ -148,7 +148,22 @@ public class FirmaWebService : IDisposable
 
                 // Crear listener
                 _listener = new HttpListener();
-                _listener.Prefixes.Add($"http://+:{Puerto}/"); // Escuchar en todas las interfaces
+                // Intentar escuchar en todas las interfaces primero
+                try
+                {
+                    // Usar * en lugar de + para evitar problemas de permisos
+                    _listener.Prefixes.Add($"http://*:{Puerto}/"); // Escuchar en todas las interfaces
+                    Log.Information("Configurado para escuchar en todas las interfaces (puerto {Puerto})", Puerto);
+                }
+                catch (HttpListenerException ex)
+                {
+                    // Si falla (sin permisos de admin), intentar solo en localhost
+                    Log.Warning("No se pueden usar todas las interfaces. Error: {Error}. Intentando solo localhost...", ex.Message);
+                    _listener.Prefixes.Add($"http://localhost:{Puerto}/");
+                    // Actualizar URL base para usar localhost
+                    UrlBase = $"http://localhost:{Puerto}";
+                    Log.Warning("Solo disponible en localhost. El móvil no podrá conectarse.");
+                }
 
                 // Iniciar servidor
                 _listener.Start();
@@ -244,11 +259,34 @@ public class FirmaWebService : IDisposable
 
         try
         {
+            // Cancelar primero para que el bucle de procesamiento se detenga
             _cancellationTokenSource?.Cancel();
+            
+            // Esperar un poco para que las peticiones en curso terminen
+            Task.Delay(100).Wait();
+            
+            // Detener el listener
             _listener?.Stop();
+            
+            // Esperar a que termine el task del servidor si existe
+            try
+            {
+                _serverTask?.Wait(TimeSpan.FromSeconds(2));
+            }
+            catch (Exception ex)
+            {
+                Log.Debug("Error al esperar que termine el task del servidor: {Error}", ex.Message);
+            }
+            
+            // Cerrar el listener
             _listener?.Close();
             
             Log.Information("Servidor HTTP local detenido");
+        }
+        catch (ObjectDisposedException)
+        {
+            // Ya estaba cerrado, no es un error
+            Log.Debug("El listener ya estaba cerrado");
         }
         catch (Exception ex)
         {
@@ -263,13 +301,26 @@ public class FirmaWebService : IDisposable
     {
         if (_listener == null) return;
 
-        while (!cancellationToken.IsCancellationRequested && _listener.IsListening)
+        while (!cancellationToken.IsCancellationRequested)
         {
             try
             {
+                // Verificar que el listener sigue activo antes de esperar peticiones
+                if (!_listener.IsListening)
+                {
+                    Log.Debug("Listener detenido, saliendo del bucle de procesamiento");
+                    break;
+                }
+
                 // Esperar petición (con timeout)
                 var context = await _listener.GetContextAsync();
                 _ = Task.Run(() => ManejarPeticion(context, cancellationToken));
+            }
+            catch (ObjectDisposedException)
+            {
+                // El listener fue cerrado/disposed, salir normalmente
+                Log.Debug("Listener cerrado, saliendo del bucle de procesamiento");
+                break;
             }
             catch (HttpListenerException ex) when (ex.ErrorCode == 995)
             {
@@ -277,9 +328,24 @@ public class FirmaWebService : IDisposable
                 Log.Debug("Servidor HTTP cerrado");
                 break;
             }
+            catch (InvalidOperationException)
+            {
+                // El listener no está escuchando o fue cerrado
+                Log.Debug("Listener no está escuchando, saliendo del bucle");
+                break;
+            }
             catch (Exception ex)
             {
-                Log.Error(ex, "Error al procesar petición HTTP");
+                // Solo loguear si el listener sigue activo
+                if (_listener?.IsListening == true)
+                {
+                    Log.Error(ex, "Error al procesar petición HTTP");
+                }
+                else
+                {
+                    Log.Debug("Error al procesar petición (listener cerrado): {Error}", ex.Message);
+                    break;
+                }
             }
         }
     }
@@ -295,13 +361,35 @@ public class FirmaWebService : IDisposable
         try
         {
             var path = request.Url?.AbsolutePath ?? "";
-            Log.Debug("Petición recibida: {Method} {Path}", request.HttpMethod, path);
+            var remoteIp = request.RemoteEndPoint?.Address?.ToString() ?? "desconocida";
+            Log.Information("Petición recibida: {Method} {Path} desde IP: {IP}", request.HttpMethod, path, remoteIp);
 
+            // OPTIONS - Preflight CORS
+            if (request.HttpMethod == "OPTIONS")
+            {
+                response.Headers.Add("Access-Control-Allow-Origin", "*");
+                response.Headers.Add("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+                response.Headers.Add("Access-Control-Allow-Headers", "Content-Type");
+                response.StatusCode = 200;
+                response.Close();
+                return;
+            }
+            
             // GET /firma/{token} - Servir página HTML
             if (request.HttpMethod == "GET" && path.StartsWith("/firma/"))
             {
                 var token = path.Substring("/firma/".Length);
-                await ServirPaginaFirma(response, token);
+                await ServirPaginaFirma(context, token);
+            }
+            // GET /styles.css - Servir CSS
+            else if (request.HttpMethod == "GET" && path == "/styles.css")
+            {
+                await ServirArchivoEstatico(context, "styles.css", "text/css");
+            }
+            // GET /signature.js - Servir JavaScript
+            else if (request.HttpMethod == "GET" && path == "/signature.js")
+            {
+                await ServirArchivoEstatico(context, "signature.js", "application/javascript");
             }
             // POST /firma/{token} - Recibir firma
             else if (request.HttpMethod == "POST" && path.StartsWith("/firma/"))
@@ -336,8 +424,11 @@ public class FirmaWebService : IDisposable
     /// <summary>
     /// Sirve la página HTML de firma.
     /// </summary>
-    private async Task ServirPaginaFirma(HttpListenerResponse response, string token)
+    private async Task ServirPaginaFirma(HttpListenerContext context, string token)
     {
+        var response = context.Response;
+        var request = context.Request;
+        
         // Verificar que el token es válido
         if (!_tokensActivos.ContainsKey(token))
         {
@@ -364,18 +455,67 @@ public class FirmaWebService : IDisposable
             // Reemplazar placeholder del token si existe
             html = html.Replace("{TOKEN}", token);
 
+            // Agregar headers CORS y otros necesarios para móviles
+            response.Headers.Add("Access-Control-Allow-Origin", "*");
+            response.Headers.Add("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+            response.Headers.Add("Access-Control-Allow-Headers", "Content-Type");
+            response.Headers.Add("Cache-Control", "no-cache, no-store, must-revalidate");
+            response.Headers.Add("Pragma", "no-cache");
+            response.Headers.Add("Expires", "0");
+            
             response.ContentType = "text/html; charset=utf-8";
             response.StatusCode = 200;
             
             var bytes = Encoding.UTF8.GetBytes(html);
             await response.OutputStream.WriteAsync(bytes);
             response.Close();
-
-            Log.Debug("Página HTML servida para token: {Token}", token);
+            
+            Log.Information("Página HTML servida para token: {Token} desde IP: {IP}", token, request.RemoteEndPoint?.Address);
         }
         catch (Exception ex)
         {
             Log.Error(ex, "Error al servir página HTML");
+            response.StatusCode = 500;
+            response.Close();
+        }
+    }
+
+    /// <summary>
+    /// Sirve un archivo estático (CSS, JS, etc.).
+    /// </summary>
+    private async Task ServirArchivoEstatico(HttpListenerContext context, string nombreArchivo, string contentType)
+    {
+        var response = context.Response;
+        try
+        {
+            var rutaWwwRoot = ConsentimientoPathService.ObtenerRutaWwwRoot();
+            var rutaArchivo = Path.Combine(rutaWwwRoot, nombreArchivo);
+
+            if (!File.Exists(rutaArchivo))
+            {
+                Log.Warning("Archivo estático no encontrado: {Ruta}", rutaArchivo);
+                response.StatusCode = 404;
+                response.Close();
+                return;
+            }
+
+            // Agregar headers CORS
+            response.Headers.Add("Access-Control-Allow-Origin", "*");
+            response.Headers.Add("Cache-Control", "public, max-age=3600");
+            
+            var contenido = await File.ReadAllTextAsync(rutaArchivo);
+            response.ContentType = $"{contentType}; charset=utf-8";
+            response.StatusCode = 200;
+
+            var bytes = Encoding.UTF8.GetBytes(contenido);
+            await response.OutputStream.WriteAsync(bytes);
+            response.Close();
+
+            Log.Debug("Archivo estático servido: {Archivo} desde IP: {IP}", nombreArchivo, context.Request.RemoteEndPoint?.Address);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error al servir archivo estático: {Archivo}", nombreArchivo);
             response.StatusCode = 500;
             response.Close();
         }

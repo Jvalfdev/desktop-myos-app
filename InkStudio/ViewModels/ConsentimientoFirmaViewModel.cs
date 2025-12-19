@@ -224,7 +224,7 @@ public partial class ConsentimientoFirmaViewModel : ViewModelBase
 
             // Cerrar modal después de un breve delay
             await Task.Delay(1500);
-            CancelarFirma();
+            CerrarModal();
         }
         catch (Exception ex)
         {
@@ -325,11 +325,25 @@ public partial class ConsentimientoFirmaViewModel : ViewModelBase
             };
         }
 
-        EsVisible = true;
+        // Limpiar estado primero
         LimpiarEstado();
+        
+        // Ahora abrir el modal explícitamente
+        EsVisible = true;
 
         // Iniciar automáticamente el servidor
         await IniciarFirmaCommand.ExecuteAsync(null);
+    }
+
+    /// <summary>
+    /// Cierra el modal y limpia el estado.
+    /// </summary>
+    public void CerrarModal()
+    {
+        EsVisible = false;
+        LimpiarEstado();
+        _firmaWebService.FirmaRecibida -= OnFirmaRecibida;
+        _firmaWebService.DetenerServidor();
     }
 
     #endregion

@@ -5,7 +5,7 @@
              x:DataType="vm:ConsentimientoFirmaViewModel">
 
     <!-- Modal overlay -->
-    <Border IsVisible="{Binding EsVisible}"
+    <Border IsVisible="{Binding EsVisible, FallbackValue=False}"
             Background="#80000000"
             ZIndex="1000">
         
@@ -55,13 +55,11 @@
                         <Border Background="#2a2a3e"
                                 CornerRadius="12"
                                 Padding="20">
-                            <ScrollViewer MaxHeight="200"
-                                          VerticalScrollBarVisibility="Auto">
-                                <TextBlock Text="{Binding TextoConsentimiento}"
-                                           TextWrapping="Wrap"
-                                           LineHeight="1.6"
-                                           FontSize="13"/>
-                            </ScrollViewer>
+                            <TextBlock Text="{Binding TextoConsentimiento}"
+                                       TextWrapping="Wrap"
+                                       LineHeight="24"
+                                       LineSpacing="4"
+                                       FontSize="13"/>
                         </Border>
 
                         <!-- Checkbox aceptar términos -->
