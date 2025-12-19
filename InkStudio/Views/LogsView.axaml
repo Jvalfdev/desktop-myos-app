@@ -11,21 +11,7 @@
             <Setter Property="Padding" Value="15"/>
         </Style>
         
-        <Style Selector="Button.btn-primary">
-            <Setter Property="Background" Value="#4CAF50"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="Padding" Value="15,10"/>
-            <Setter Property="CornerRadius" Value="6"/>
-            <Setter Property="Margin" Value="0,0,10,0"/>
-        </Style>
-        
-        <Style Selector="Button.btn-secondary">
-            <Setter Property="Background" Value="#3a3a4e"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="Padding" Value="15,10"/>
-            <Setter Property="CornerRadius" Value="6"/>
-            <Setter Property="Margin" Value="0,0,10,0"/>
-        </Style>
+        <!-- Los estilos de botones están definidos globalmente en App.axaml -->
     </UserControl.Styles>
 
     <Grid RowDefinitions="Auto,Auto,*,Auto" Margin="30">

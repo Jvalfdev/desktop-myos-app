@@ -41,43 +41,7 @@
             </Style.Animations>
         </Style>
         
-        <!-- Botón primario -->
-        <Style Selector="Button.btn-primary">
-            <Setter Property="Background" Value="#4CAF50"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="Padding" Value="20,12"/>
-            <Setter Property="CornerRadius" Value="6"/>
-        </Style>
-        
-        <!-- Botón secundario -->
-        <Style Selector="Button.btn-secondary">
-            <Setter Property="Background" Value="#3a3a4e"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="Padding" Value="20,12"/>
-            <Setter Property="CornerRadius" Value="6"/>
-        </Style>
-        
-        <!-- Botón peligro -->
-        <Style Selector="Button.btn-danger">
-            <Setter Property="Background" Value="#f44336"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="Padding" Value="20,12"/>
-            <Setter Property="CornerRadius" Value="6"/>
-        </Style>
-        
-        <!-- Botón cerrar (X) -->
-        <Style Selector="Button.btn-close">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="#b0b0b0"/>
-            <Setter Property="HorizontalAlignment" Value="Right"/>
-            <Setter Property="VerticalAlignment" Value="Center"/>
-            <Setter Property="HorizontalContentAlignment" Value="Center"/>
-            <Setter Property="VerticalContentAlignment" Value="Center"/>
-        </Style>
-        <Style Selector="Button.btn-close:pointerover">
-            <Setter Property="Background" Value="#3a3a4e"/>
-            <Setter Property="Foreground" Value="White"/>
-        </Style>
+        <!-- Los estilos de botones están definidos globalmente en App.axaml -->
     </UserControl.Styles>
 
     <Grid RowDefinitions="Auto,Auto,Auto,*,Auto">
