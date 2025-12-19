@@ -278,11 +278,32 @@ public partial class TrabajosViewModel : ViewModelBase
 
     /// <summary>
     /// Abre el formulario para crear un nuevo trabajo para un cliente específico.
+    /// Se asegura de usar la instancia de cliente del propio DbContext para que
+    /// el ComboBox quede correctamente seleccionado.
     /// </summary>
-    public void NuevoTrabajoParaCliente(Cliente cliente)
+    public async Task NuevoTrabajoParaCliente(Cliente cliente)
     {
         LimpiarFormulario();
-        ClienteSeleccionado = cliente;
+
+        try
+        {
+            // Asegurar que la lista de clientes está cargada
+            if (!Clientes.Any())
+            {
+                await CargarClientes();
+            }
+
+            // Buscar al cliente por Id dentro de la colección propia
+            var clienteEnContexto = Clientes.FirstOrDefault(c => c.Id == cliente.Id);
+
+            ClienteSeleccionado = clienteEnContexto ?? cliente;
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error al preseleccionar cliente en NuevoTrabajoParaCliente (ClienteId: {ClienteId})", cliente.Id);
+            MensajeError = "No se pudo preseleccionar el cliente en el formulario de trabajo.";
+        }
+
         EsEdicion = false;
         TituloFormulario = "✨ Nuevo Trabajo";
         MostrarFormulario = true;

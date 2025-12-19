@@ -787,7 +787,7 @@ public partial class AgendaViewModel : ViewModelBase
             _mainWindowVM.IrATrabajosCommand.Execute(null);
             
             // Abrir el formulario de nuevo trabajo con el cliente pre-seleccionado
-            _trabajosVM.NuevoTrabajoParaCliente(ClienteSeleccionado);
+            _ = _trabajosVM.NuevoTrabajoParaCliente(ClienteSeleccionado);
             
             Log.Information("Navegando a Trabajos para crear trabajo para cliente {ClienteId}", ClienteSeleccionado.Id);
         }
