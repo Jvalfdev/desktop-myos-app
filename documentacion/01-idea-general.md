@@ -447,10 +447,12 @@ dotnet ef database update
 - [x] Estilos globales de botones con degradados
 
 ### En Desarrollo 🔨
-- [ ] **Módulo de Consentimientos** (planificado)
-  - Sistema de firma dual (móvil táctil / PC mouse)
-  - Generación de PDFs legalmente válidos
-  - Integración en flujos de Clientes y Trabajos
+- [x] **Módulo de Consentimientos** (75% completado)
+  - ✅ Sistema de firma dual (móvil táctil / PC mouse)
+  - ✅ Generación de PDFs legalmente válidos
+  - ✅ Integración en flujos de Clientes (RGPD e Imágenes opcionales)
+  - ⏳ Pendiente: Integración en Trabajos (Fase 8)
+  - ⏳ Pendiente: Vista de Consentimientos (Fase 9)
   - Ver plan detallado: `documentacion/03-plan-consentimientos.md`
 
 ### Pendiente ⏳

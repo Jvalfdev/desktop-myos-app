@@ -38,7 +38,7 @@ public partial class ClientesView : UserControl
             if (DataContext is ClientesViewModel vm)
             {
                 vm.ClienteSeleccionado = cliente;
-                vm.EditarClienteCommand.Execute(null);
+                vm.VerFichaClienteCommand.ExecuteAsync(cliente);
             }
         }
     }

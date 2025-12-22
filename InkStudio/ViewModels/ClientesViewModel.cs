@@ -1,5 +1,7 @@
 using System;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -49,6 +51,12 @@ public partial class ClientesViewModel : ViewModelBase
     /// </summary>
     [ObservableProperty]
     private bool _mostrarFormulario = false;
+
+    /// <summary>
+    /// Indica si la ficha del cliente está visible.
+    /// </summary>
+    [ObservableProperty]
+    private bool _mostrarFicha = false;
 
     /// <summary>
     /// Indica si estamos editando (true) o creando (false) un cliente.
@@ -126,6 +134,18 @@ public partial class ClientesViewModel : ViewModelBase
     /// </summary>
     [ObservableProperty]
     private ConsentimientoFirmaViewModel? _consentimientoFirmaVM;
+
+    /// <summary>
+    /// Lista de trabajos del cliente seleccionado (para la ficha).
+    /// </summary>
+    [ObservableProperty]
+    private ObservableCollection<Trabajo> _trabajosCliente = new();
+
+    /// <summary>
+    /// Lista de consentimientos del cliente seleccionado (para la ficha).
+    /// </summary>
+    [ObservableProperty]
+    private ObservableCollection<Consentimiento> _consentimientosCliente = new();
 
     #endregion
 
@@ -225,6 +245,43 @@ public partial class ClientesViewModel : ViewModelBase
     }
 
     /// <summary>
+    /// Abre la ficha del cliente seleccionado.
+    /// </summary>
+    [RelayCommand]
+    private async Task VerFichaCliente(Cliente? cliente = null)
+    {
+        var clienteAVer = cliente ?? ClienteSeleccionado;
+        if (clienteAVer == null) return;
+
+        try
+        {
+            ClienteSeleccionado = clienteAVer;
+            
+            // Recargar cliente con relaciones
+            await _db.Entry(clienteAVer).ReloadAsync();
+            await _db.Entry(clienteAVer).Collection(c => c.Trabajos).LoadAsync();
+            await _db.Entry(clienteAVer).Collection(c => c.Consentimientos).LoadAsync();
+
+            // Cargar trabajos y consentimientos
+            TrabajosCliente = new ObservableCollection<Trabajo>(
+                clienteAVer.Trabajos.OrderByDescending(t => t.Fecha));
+            
+            ConsentimientosCliente = new ObservableCollection<Consentimiento>(
+                clienteAVer.Consentimientos.OrderByDescending(c => c.FechaFirma));
+
+            MostrarFicha = true;
+            MostrarFormulario = false;
+            
+            Log.Information("Ficha del cliente abierta: {ClienteId}", clienteAVer.Id);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error al abrir ficha del cliente {ClienteId}", clienteAVer?.Id);
+            MensajeError = $"Error al cargar la ficha: {ex.Message}";
+        }
+    }
+
+    /// <summary>
     /// Abre el formulario para editar el cliente seleccionado.
     /// </summary>
     [RelayCommand]
@@ -236,6 +293,19 @@ public partial class ClientesViewModel : ViewModelBase
         EsEdicion = true;
         TituloFormulario = "✏️ Editar Cliente";
         MostrarFormulario = true;
+        MostrarFicha = false;
+    }
+
+    /// <summary>
+    /// Cierra la ficha del cliente.
+    /// </summary>
+    [RelayCommand]
+    private void CerrarFicha()
+    {
+        MostrarFicha = false;
+        ClienteSeleccionado = null;
+        TrabajosCliente.Clear();
+        ConsentimientosCliente.Clear();
     }
 
     /// <summary>
@@ -501,6 +571,7 @@ public partial class ClientesViewModel : ViewModelBase
     private void CancelarEdicion()
     {
         MostrarFormulario = false;
+        MostrarFicha = false;
         MensajeError = string.Empty;
     }
 
@@ -588,6 +659,329 @@ public partial class ClientesViewModel : ViewModelBase
         finally
         {
             Cargando = false;
+        }
+    }
+
+    /// <summary>
+    /// Obtiene el consentimiento RGPD de un cliente.
+    /// </summary>
+    /// <param name="cliente">Cliente del que obtener el consentimiento.</param>
+    /// <returns>Consentimiento RGPD si existe, null en caso contrario.</returns>
+    public async Task<Consentimiento?> ObtenerConsentimientoRGPD(Cliente cliente)
+    {
+        try
+        {
+            var consentimiento = await _db.Consentimientos
+                .FirstOrDefaultAsync(c => c.ClienteId == cliente.Id && 
+                                          c.Tipo == TipoConsentimiento.RGPD && 
+                                          c.Firmado);
+            
+            return consentimiento;
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error al obtener consentimiento RGPD del cliente {ClienteId}", cliente.Id);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Abre el PDF de un consentimiento específico.
+    /// </summary>
+    [RelayCommand]
+    private Task AbrirConsentimiento(Consentimiento? consentimiento)
+    {
+        if (consentimiento == null || ClienteSeleccionado == null) return Task.CompletedTask;
+
+        try
+        {
+            if (string.IsNullOrEmpty(consentimiento.RutaDocumento))
+            {
+                MensajeError = "No se encontró el documento PDF para este consentimiento.";
+                return Task.CompletedTask;
+            }
+
+            if (!File.Exists(consentimiento.RutaDocumento))
+            {
+                MensajeError = $"El archivo PDF no existe en la ruta: {consentimiento.RutaDocumento}";
+                Log.Warning("PDF no encontrado: {Ruta}", consentimiento.RutaDocumento);
+                return Task.CompletedTask;
+            }
+
+            // Abrir el PDF con el visor predeterminado del sistema
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = consentimiento.RutaDocumento,
+                UseShellExecute = true
+            });
+
+            Log.Information("PDF abierto: {Ruta}", consentimiento.RutaDocumento);
+            return Task.CompletedTask;
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error al abrir consentimiento {ConsentimientoId}", consentimiento.Id);
+            MensajeError = $"Error al abrir el PDF: {ex.Message}";
+            return Task.CompletedTask;
+        }
+    }
+
+    /// <summary>
+    /// Exporta el PDF de un consentimiento a la carpeta de Descargas.
+    /// </summary>
+    [RelayCommand]
+    private Task ExportarConsentimiento(Consentimiento? consentimiento)
+    {
+        if (consentimiento == null || ClienteSeleccionado == null) return Task.CompletedTask;
+
+        try
+        {
+            if (string.IsNullOrEmpty(consentimiento.RutaDocumento))
+            {
+                MensajeError = "No se encontró el documento PDF para este consentimiento.";
+                return Task.CompletedTask;
+            }
+
+            if (!File.Exists(consentimiento.RutaDocumento))
+            {
+                MensajeError = $"El archivo PDF no existe en la ruta: {consentimiento.RutaDocumento}";
+                return Task.CompletedTask;
+            }
+
+            // Copiar a la carpeta de Descargas
+            var descargas = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
+            var nombreArchivo = Path.GetFileName(consentimiento.RutaDocumento);
+            var rutaDestino = Path.Combine(descargas, nombreArchivo);
+
+            // Si el archivo ya existe, agregar un número
+            var contador = 1;
+            var nombreBase = Path.GetFileNameWithoutExtension(nombreArchivo);
+            var extension = Path.GetExtension(nombreArchivo);
+            while (File.Exists(rutaDestino))
+            {
+                nombreArchivo = $"{nombreBase}_{contador}{extension}";
+                rutaDestino = Path.Combine(descargas, nombreArchivo);
+                contador++;
+            }
+
+            File.Copy(consentimiento.RutaDocumento, rutaDestino);
+            
+            Log.Information("PDF exportado a: {Ruta}", rutaDestino);
+            MensajeError = string.Empty;
+            return Task.CompletedTask;
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error al exportar consentimiento {ConsentimientoId}", consentimiento.Id);
+            MensajeError = $"Error al exportar el PDF: {ex.Message}";
+            return Task.CompletedTask;
+        }
+    }
+
+    /// <summary>
+    /// Envía el PDF de un consentimiento por correo electrónico.
+    /// </summary>
+    [RelayCommand]
+    private Task EnviarConsentimientoPorCorreo(Consentimiento? consentimiento)
+    {
+        if (consentimiento == null || ClienteSeleccionado == null) return Task.CompletedTask;
+
+        try
+        {
+            if (string.IsNullOrEmpty(consentimiento.RutaDocumento))
+            {
+                MensajeError = "No se encontró el documento PDF para este consentimiento.";
+                return Task.CompletedTask;
+            }
+
+            if (!File.Exists(consentimiento.RutaDocumento))
+            {
+                MensajeError = $"El archivo PDF no existe en la ruta: {consentimiento.RutaDocumento}";
+                return Task.CompletedTask;
+            }
+
+            if (string.IsNullOrEmpty(ClienteSeleccionado.Email))
+            {
+                MensajeError = "El cliente no tiene un email registrado. Por favor, añade un email al cliente primero.";
+                return Task.CompletedTask;
+            }
+
+            // Abrir el cliente de correo predeterminado
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = $"mailto:{ClienteSeleccionado.Email}?subject=Consentimiento%20{consentimiento.NombreTipo}&body=Adjunto%20el%20consentimiento%20firmado.",
+                UseShellExecute = true
+            });
+
+            // También abrimos el PDF para que el usuario pueda adjuntarlo
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = consentimiento.RutaDocumento,
+                UseShellExecute = true
+            });
+
+            Log.Information("Cliente de correo abierto para enviar consentimiento {Tipo} a {Email}", 
+                consentimiento.Tipo, ClienteSeleccionado.Email);
+            return Task.CompletedTask;
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error al abrir cliente de correo para consentimiento {ConsentimientoId}", consentimiento.Id);
+            MensajeError = $"Error al abrir el cliente de correo: {ex.Message}";
+            return Task.CompletedTask;
+        }
+    }
+
+    /// <summary>
+    /// Abre el PDF del consentimiento RGPD del cliente seleccionado.
+    /// </summary>
+    [RelayCommand]
+    private async Task AbrirConsentimientoRGPD(Cliente? cliente)
+    {
+        if (cliente == null) return;
+
+        try
+        {
+            var consentimiento = await ObtenerConsentimientoRGPD(cliente);
+            
+            if (consentimiento == null || string.IsNullOrEmpty(consentimiento.RutaDocumento))
+            {
+                MensajeError = "No se encontró el consentimiento RGPD firmado para este cliente.";
+                return;
+            }
+
+            if (!File.Exists(consentimiento.RutaDocumento))
+            {
+                MensajeError = $"El archivo PDF no existe en la ruta: {consentimiento.RutaDocumento}";
+                Log.Warning("PDF no encontrado: {Ruta}", consentimiento.RutaDocumento);
+                return;
+            }
+
+            // Abrir el PDF con el visor predeterminado del sistema
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = consentimiento.RutaDocumento,
+                UseShellExecute = true
+            });
+
+            Log.Information("PDF abierto: {Ruta}", consentimiento.RutaDocumento);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error al abrir consentimiento RGPD del cliente {ClienteId}", cliente.Id);
+            MensajeError = $"Error al abrir el PDF: {ex.Message}";
+        }
+    }
+
+    /// <summary>
+    /// Exporta el PDF del consentimiento RGPD a una ubicación elegida por el usuario.
+    /// </summary>
+    [RelayCommand]
+    private async Task ExportarConsentimientoRGPD(Cliente? cliente)
+    {
+        if (cliente == null) return;
+
+        try
+        {
+            var consentimiento = await ObtenerConsentimientoRGPD(cliente);
+            
+            if (consentimiento == null || string.IsNullOrEmpty(consentimiento.RutaDocumento))
+            {
+                MensajeError = "No se encontró el consentimiento RGPD firmado para este cliente.";
+                return;
+            }
+
+            if (!File.Exists(consentimiento.RutaDocumento))
+            {
+                MensajeError = $"El archivo PDF no existe en la ruta: {consentimiento.RutaDocumento}";
+                return;
+            }
+
+            // Usar SaveFileDialog de Avalonia (necesitamos acceso a la ventana principal)
+            // Por ahora, copiamos a la carpeta de Descargas
+            var descargas = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
+            var nombreArchivo = Path.GetFileName(consentimiento.RutaDocumento);
+            var rutaDestino = Path.Combine(descargas, nombreArchivo);
+
+            // Si el archivo ya existe, agregar un número
+            var contador = 1;
+            var nombreBase = Path.GetFileNameWithoutExtension(nombreArchivo);
+            var extension = Path.GetExtension(nombreArchivo);
+            while (File.Exists(rutaDestino))
+            {
+                nombreArchivo = $"{nombreBase}_{contador}{extension}";
+                rutaDestino = Path.Combine(descargas, nombreArchivo);
+                contador++;
+            }
+
+            File.Copy(consentimiento.RutaDocumento, rutaDestino);
+            
+            Log.Information("PDF exportado a: {Ruta}", rutaDestino);
+            MensajeError = string.Empty; // Limpiar mensajes de error previos
+            // TODO: Mostrar mensaje de éxito (necesitamos un sistema de notificaciones)
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error al exportar consentimiento RGPD del cliente {ClienteId}", cliente.Id);
+            MensajeError = $"Error al exportar el PDF: {ex.Message}";
+        }
+    }
+
+    /// <summary>
+    /// Envía el PDF del consentimiento RGPD por correo electrónico.
+    /// </summary>
+    [RelayCommand]
+    private async Task EnviarConsentimientoRGPDPorCorreo(Cliente? cliente)
+    {
+        if (cliente == null) return;
+
+        try
+        {
+            var consentimiento = await ObtenerConsentimientoRGPD(cliente);
+            
+            if (consentimiento == null || string.IsNullOrEmpty(consentimiento.RutaDocumento))
+            {
+                MensajeError = "No se encontró el consentimiento RGPD firmado para este cliente.";
+                return;
+            }
+
+            if (!File.Exists(consentimiento.RutaDocumento))
+            {
+                MensajeError = $"El archivo PDF no existe en la ruta: {consentimiento.RutaDocumento}";
+                return;
+            }
+
+            if (string.IsNullOrEmpty(cliente.Email))
+            {
+                MensajeError = "El cliente no tiene un email registrado. Por favor, añade un email al cliente primero.";
+                return;
+            }
+
+            // Abrir el cliente de correo predeterminado con el PDF adjunto
+            // mailto: no soporta adjuntos directamente, así que usamos el protocolo file://
+            // La mejor opción es abrir el cliente de correo con el PDF ya seleccionado
+            // Por ahora, abrimos el PDF y el usuario puede adjuntarlo manualmente
+            // TODO: Implementar envío automático cuando tengamos configuración SMTP
+            
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = $"mailto:{cliente.Email}?subject=Consentimiento%20RGPD&body=Adjunto%20el%20consentimiento%20RGPD%20firmado.",
+                UseShellExecute = true
+            });
+
+            // También abrimos el PDF para que el usuario pueda adjuntarlo
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = consentimiento.RutaDocumento,
+                UseShellExecute = true
+            });
+
+            Log.Information("Cliente de correo abierto para enviar consentimiento RGPD a {Email}", cliente.Email);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error al abrir cliente de correo para cliente {ClienteId}", cliente.Id);
+            MensajeError = $"Error al abrir el cliente de correo: {ex.Message}";
         }
     }
 
