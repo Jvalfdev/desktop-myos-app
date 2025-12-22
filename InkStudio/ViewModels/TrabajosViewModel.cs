@@ -68,6 +68,30 @@ public partial class TrabajosViewModel : ViewModelBase
     [ObservableProperty]
     private ObservableCollection<Cliente> _clientes = new();
 
+    /// <summary>
+    /// ViewModel del modal de firma de consentimientos.
+    /// </summary>
+    [ObservableProperty]
+    private ConsentimientoFirmaViewModel? _consentimientoFirmaVM;
+
+    /// <summary>
+    /// Indica si se debe mostrar un aviso sobre consentimiento pendiente.
+    /// </summary>
+    [ObservableProperty]
+    private bool _mostrarAvisoConsentimiento = false;
+
+    /// <summary>
+    /// Mensaje del aviso de consentimiento.
+    /// </summary>
+    [ObservableProperty]
+    private string _mensajeAvisoConsentimiento = string.Empty;
+
+    /// <summary>
+    /// Trabajo que necesita consentimiento (para el aviso).
+    /// </summary>
+    [ObservableProperty]
+    private Trabajo? _trabajoPendienteConsentimiento;
+
     #endregion
 
     #region Propiedades - Formulario de Edición
@@ -197,6 +221,7 @@ public partial class TrabajosViewModel : ViewModelBase
             var query = _db.Trabajos
                 .Include(t => t.Cliente)
                 .Include(t => t.Cita)
+                .Include(t => t.Consentimiento)
                 .AsQueryable();
 
             // Aplicar filtro de cliente si existe
@@ -420,6 +445,65 @@ public partial class TrabajosViewModel : ViewModelBase
             await _db.SaveChangesAsync();
             Log.Information("Trabajo guardado exitosamente");
             
+            // Obtener el trabajo guardado (nuevo o actualizado)
+            Trabajo trabajoGuardado;
+            if (EsEdicion && TrabajoSeleccionado != null)
+            {
+                trabajoGuardado = TrabajoSeleccionado;
+            }
+            else
+            {
+                // Para trabajos nuevos, obtener el último trabajo del cliente
+                trabajoGuardado = await _db.Trabajos
+                    .Include(t => t.Cliente)
+                    .Include(t => t.Consentimiento)
+                    .Where(t => t.ClienteId == ClienteSeleccionado.Id)
+                    .OrderByDescending(t => t.FechaCreacion)
+                    .FirstOrDefaultAsync();
+                
+                if (trabajoGuardado == null)
+                {
+                    Log.Warning("No se pudo encontrar el trabajo guardado después de SaveChanges");
+                    MostrarFormulario = false;
+                    await CargarTrabajos();
+                    return;
+                }
+            }
+            
+            if (trabajoGuardado != null)
+            {
+                // Recargar relaciones
+                await _db.Entry(trabajoGuardado).Reference(t => t.Cliente).LoadAsync();
+                await _db.Entry(trabajoGuardado).Reference(t => t.Consentimiento).LoadAsync();
+                
+                // Cargar consentimientos del cliente para verificar RGPD
+                await _db.Entry(trabajoGuardado.Cliente).Collection(c => c.Consentimientos).LoadAsync();
+                
+                // Verificar si el cliente tiene RGPD (ahora con consentimientos cargados)
+                var tieneRGPD = trabajoGuardado.Cliente.TieneConsentimientoRGPD;
+                
+                if (!tieneRGPD)
+                {
+                    // Mostrar aviso no bloqueante
+                    TrabajoPendienteConsentimiento = trabajoGuardado;
+                    MensajeAvisoConsentimiento = "⚠️ El cliente no tiene RGPD firmado. Recuerda solicitarlo antes de realizar el trabajo.";
+                    MostrarAvisoConsentimiento = true;
+                }
+                else
+                {
+                    // Verificar si el trabajo tiene consentimiento
+                    var tieneConsentimiento = trabajoGuardado.Consentimiento != null && trabajoGuardado.Consentimiento.Firmado;
+                    
+                    if (!tieneConsentimiento)
+                    {
+                        // Mostrar aviso no bloqueante
+                        TrabajoPendienteConsentimiento = trabajoGuardado;
+                        MensajeAvisoConsentimiento = "✅ Trabajo guardado. Recuerda firmar el consentimiento de trabajo.";
+                        MostrarAvisoConsentimiento = true;
+                    }
+                }
+            }
+            
             MostrarFormulario = false;
             await CargarTrabajos();
 
@@ -441,6 +525,93 @@ public partial class TrabajosViewModel : ViewModelBase
         {
             Cargando = false;
         }
+    }
+
+    /// <summary>
+    /// Verifica si un trabajo tiene consentimiento firmado.
+    /// </summary>
+    public async Task<bool> TrabajoTieneConsentimiento(int trabajoId)
+    {
+        try
+        {
+            var trabajo = await _db.Trabajos
+                .Include(t => t.Consentimiento)
+                .FirstOrDefaultAsync(t => t.Id == trabajoId);
+            
+            return trabajo?.Consentimiento != null && trabajo.Consentimiento.Firmado;
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error al verificar consentimiento del trabajo {TrabajoId}", trabajoId);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Abre el modal para firmar el consentimiento de trabajo.
+    /// </summary>
+    [RelayCommand]
+    private async Task FirmarConsentimientoTrabajo(Trabajo? trabajo = null)
+    {
+        var trabajoAFirmar = trabajo ?? TrabajoSeleccionado;
+        if (trabajoAFirmar == null) return;
+
+        try
+        {
+            // Recargar trabajo con relaciones
+            await _db.Entry(trabajoAFirmar).ReloadAsync();
+            await _db.Entry(trabajoAFirmar).Reference(t => t.Cliente).LoadAsync();
+            await _db.Entry(trabajoAFirmar).Reference(t => t.Consentimiento).LoadAsync();
+            
+            // Cargar consentimientos del cliente para verificar RGPD
+            await _db.Entry(trabajoAFirmar.Cliente).Collection(c => c.Consentimientos).LoadAsync();
+            
+            // Verificar si ya tiene consentimiento firmado
+            if (trabajoAFirmar.Consentimiento != null && trabajoAFirmar.Consentimiento.Firmado)
+            {
+                MensajeError = "Este trabajo ya tiene el consentimiento firmado";
+                await CargarTrabajos();
+                return;
+            }
+
+            // Verificar que el cliente tenga RGPD (ahora con consentimientos cargados)
+            if (!trabajoAFirmar.Cliente.TieneConsentimientoRGPD)
+            {
+                MensajeError = "El cliente debe tener RGPD firmado antes de firmar el consentimiento de trabajo";
+                return;
+            }
+
+            // Cerrar formulario si está abierto
+            MostrarFormulario = false;
+            MostrarAvisoConsentimiento = false;
+            
+            // Abrir modal de firma de trabajo
+            if (ConsentimientoFirmaVM == null)
+            {
+                ConsentimientoFirmaVM = new ConsentimientoFirmaViewModel();
+                ConsentimientoFirmaVM.FirmaCompletada += async (s, cliente) => 
+                {
+                    await CargarTrabajos();
+                };
+            }
+            await ConsentimientoFirmaVM.AbrirModal(trabajoAFirmar.Cliente, TipoConsentimiento.Trabajo, trabajoAFirmar);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error al abrir modal de firma de consentimiento de trabajo");
+            MensajeError = $"Error: {ex.Message}";
+        }
+    }
+
+    /// <summary>
+    /// Cierra el aviso de consentimiento.
+    /// </summary>
+    [RelayCommand]
+    private void CerrarAvisoConsentimiento()
+    {
+        MostrarAvisoConsentimiento = false;
+        TrabajoPendienteConsentimiento = null;
+        MensajeAvisoConsentimiento = string.Empty;
     }
 
     /// <summary>

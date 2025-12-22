@@ -347,6 +347,30 @@ public partial class AgendaViewModel : ViewModelBase
         ? new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#2d5a2d"))
         : new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#5a2d2d"));
 
+    /// <summary>
+    /// Indica si se debe mostrar un aviso sobre consentimiento pendiente.
+    /// </summary>
+    [ObservableProperty]
+    private bool _mostrarAvisoConsentimiento = false;
+
+    /// <summary>
+    /// Mensaje del aviso de consentimiento.
+    /// </summary>
+    [ObservableProperty]
+    private string _mensajeAvisoConsentimiento = string.Empty;
+
+    /// <summary>
+    /// Trabajo que necesita consentimiento (para el aviso).
+    /// </summary>
+    [ObservableProperty]
+    private Trabajo? _trabajoPendienteConsentimiento;
+
+    /// <summary>
+    /// ViewModel del modal de firma de consentimientos.
+    /// </summary>
+    [ObservableProperty]
+    private ConsentimientoFirmaViewModel? _consentimientoFirmaVM;
+
     #endregion
 
     #region Propiedades - Lista de Clientes
@@ -1272,6 +1296,23 @@ public partial class AgendaViewModel : ViewModelBase
                     ClienteSeleccionado.Id, TrabajoSeleccionado?.Id);
             }
             
+            // Verificar consentimiento del trabajo si está asociado
+            if (TrabajoSeleccionado != null)
+            {
+                await _db.Entry(TrabajoSeleccionado).Reference(t => t.Consentimiento).LoadAsync();
+                await _db.Entry(TrabajoSeleccionado).Reference(t => t.Cliente).LoadAsync();
+                await _db.Entry(TrabajoSeleccionado.Cliente).Collection(c => c.Consentimientos).LoadAsync();
+                var tieneConsentimiento = TrabajoSeleccionado.Consentimiento != null && TrabajoSeleccionado.Consentimiento.Firmado;
+                
+                if (!tieneConsentimiento)
+                {
+                    // Mostrar aviso no bloqueante
+                    TrabajoPendienteConsentimiento = TrabajoSeleccionado;
+                    MensajeAvisoConsentimiento = "⚠️ El trabajo asociado no tiene consentimiento firmado. Recuerda solicitarlo antes de la cita.";
+                    MostrarAvisoConsentimiento = true;
+                }
+            }
+            
             MostrarFormulario = false;
             await CargarCitas();
         }
@@ -1643,6 +1684,78 @@ public partial class AgendaViewModel : ViewModelBase
             Log.Error(ex, "Error al verificar consentimiento del trabajo {TrabajoId}", trabajoId);
             MensajeConsentimiento = "⚠️ Error al verificar consentimiento";
         }
+    }
+
+    /// <summary>
+    /// Abre el modal para firmar el consentimiento de trabajo.
+    /// </summary>
+    [RelayCommand]
+    private async Task FirmarConsentimientoTrabajoDesdeCita(Trabajo? trabajo = null)
+    {
+        var trabajoAFirmar = trabajo ?? TrabajoPendienteConsentimiento ?? TrabajoSeleccionado;
+        if (trabajoAFirmar == null || ClienteSeleccionado == null) return;
+
+        try
+        {
+            // Recargar trabajo con relaciones
+            await _db.Entry(trabajoAFirmar).ReloadAsync();
+            await _db.Entry(trabajoAFirmar).Reference(t => t.Cliente).LoadAsync();
+            await _db.Entry(trabajoAFirmar).Reference(t => t.Consentimiento).LoadAsync();
+            
+            // Cargar consentimientos del cliente para verificar RGPD
+            await _db.Entry(trabajoAFirmar.Cliente).Collection(c => c.Consentimientos).LoadAsync();
+            
+            // Verificar si ya tiene consentimiento firmado
+            if (trabajoAFirmar.Consentimiento != null && trabajoAFirmar.Consentimiento.Firmado)
+            {
+                MensajeError = "Este trabajo ya tiene el consentimiento firmado";
+                await CargarCitas();
+                return;
+            }
+
+            // Verificar que el cliente tenga RGPD (ahora con consentimientos cargados)
+            if (!trabajoAFirmar.Cliente.TieneConsentimientoRGPD)
+            {
+                MensajeError = "El cliente debe tener RGPD firmado antes de firmar el consentimiento de trabajo";
+                return;
+            }
+
+            // Cerrar formulario si está abierto
+            MostrarFormulario = false;
+            MostrarAvisoConsentimiento = false;
+            
+            // Abrir modal de firma de trabajo
+            if (ConsentimientoFirmaVM == null)
+            {
+                ConsentimientoFirmaVM = new ConsentimientoFirmaViewModel();
+                ConsentimientoFirmaVM.FirmaCompletada += async (s, cliente) => 
+                {
+                    await CargarCitas();
+                    // Recargar trabajos del cliente para actualizar el estado
+                    if (ClienteSeleccionado != null)
+                    {
+                        await CargarTrabajosDelCliente(ClienteSeleccionado.Id);
+                    }
+                };
+            }
+            await ConsentimientoFirmaVM.AbrirModal(trabajoAFirmar.Cliente, TipoConsentimiento.Trabajo, trabajoAFirmar);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error al abrir modal de firma de consentimiento de trabajo");
+            MensajeError = $"Error: {ex.Message}";
+        }
+    }
+
+    /// <summary>
+    /// Cierra el aviso de consentimiento.
+    /// </summary>
+    [RelayCommand]
+    private void CerrarAvisoConsentimiento()
+    {
+        MostrarAvisoConsentimiento = false;
+        TrabajoPendienteConsentimiento = null;
+        MensajeAvisoConsentimiento = string.Empty;
     }
 
     #endregion

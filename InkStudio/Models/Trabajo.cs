@@ -153,5 +153,10 @@ public class Trabajo
         _ => "💼"
     };
 
+    /// <summary>
+    /// Indica si el trabajo tiene consentimiento firmado.
+    /// </summary>
+    public bool TieneConsentimiento => Consentimiento != null && Consentimiento.Firmado;
+
     #endregion
 }

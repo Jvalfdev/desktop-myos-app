@@ -41,5 +41,19 @@ public partial class TrabajosView : UserControl
             }
         }
     }
+
+    /// <summary>
+    /// Maneja el clic en el botón de firmar consentimiento desde el DataTemplate.
+    /// </summary>
+    private void OnFirmarConsentimientoClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button button && button.Tag is Trabajo trabajo)
+        {
+            if (DataContext is TrabajosViewModel vm)
+            {
+                vm.FirmarConsentimientoTrabajoCommand.Execute(trabajo);
+            }
+        }
+    }
 }
 
