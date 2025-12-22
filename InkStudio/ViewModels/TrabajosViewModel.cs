@@ -18,6 +18,15 @@ namespace InkStudio.ViewModels;
 public partial class TrabajosViewModel : ViewModelBase
 {
     private readonly InkStudioDbContext _db = new();
+    private ClientesViewModel? _clientesVM;
+
+    /// <summary>
+    /// Permite inyectar el ViewModel de Clientes para refrescar la ficha cuando cambian trabajos.
+    /// </summary>
+    public void SetClientesViewModel(ClientesViewModel clientesViewModel)
+    {
+        _clientesVM = clientesViewModel;
+    }
 
     #region Propiedades - Lista y Selección
 
@@ -413,6 +422,14 @@ public partial class TrabajosViewModel : ViewModelBase
             
             MostrarFormulario = false;
             await CargarTrabajos();
+
+            // Si la ficha del cliente está abierta, refrescarla para reflejar el nuevo trabajo
+            if (_clientesVM != null && _clientesVM.MostrarFicha && 
+                _clientesVM.ClienteSeleccionado != null &&
+                _clientesVM.ClienteSeleccionado.Id == ClienteSeleccionado.Id)
+            {
+                await _clientesVM.VerFichaClienteCommand.ExecuteAsync(_clientesVM.ClienteSeleccionado);
+            }
         }
         catch (Exception ex)
         {
@@ -446,6 +463,14 @@ public partial class TrabajosViewModel : ViewModelBase
             Log.Information("Trabajo eliminado exitosamente: ID {TrabajoId}", TrabajoSeleccionado.Id);
             MostrarFormulario = false;
             await CargarTrabajos();
+
+            // Si la ficha del cliente está abierta, refrescarla para reflejar la eliminación
+            if (_clientesVM != null && _clientesVM.MostrarFicha && 
+                _clientesVM.ClienteSeleccionado != null &&
+                _clientesVM.ClienteSeleccionado.Id == ClienteSeleccionado?.Id)
+            {
+                await _clientesVM.VerFichaClienteCommand.ExecuteAsync(_clientesVM.ClienteSeleccionado);
+            }
         }
         catch (Exception ex)
         {

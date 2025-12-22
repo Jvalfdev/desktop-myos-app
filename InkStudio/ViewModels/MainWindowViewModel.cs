@@ -1,4 +1,5 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+﻿using System.Threading.Tasks;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using InkStudio.Services;
 
@@ -45,6 +46,7 @@ public partial class MainWindowViewModel : ViewModelBase
         // Establecer referencias cruzadas para comunicación entre ViewModels
         AgendaVM.SetTrabajosViewModel(TrabajosVM);
         AgendaVM.SetMainWindowViewModel(this);
+        TrabajosVM.SetClientesViewModel(ClientesVM);
     }
 
     // TODO: Añadir estos ViewModels cuando se creen las vistas
@@ -65,18 +67,22 @@ public partial class MainWindowViewModel : ViewModelBase
     /// Navega al Dashboard.
     /// </summary>
     [RelayCommand]
-    private void IrADashboard()
+    private async Task IrADashboard()
     {
         VistaActual = "Dashboard";
+        // Refrescar los datos del Dashboard cada vez que se navega
+        await DashboardVM.CargarDatosCommand.ExecuteAsync(null);
     }
 
     /// <summary>
     /// Navega a la gestión de Clientes.
     /// </summary>
     [RelayCommand]
-    private void IrAClientes()
+    private async Task IrAClientes()
     {
         VistaActual = "Clientes";
+        // Refrescar lista de clientes al entrar en la vista
+        await ClientesVM.CargarClientesCommand.ExecuteAsync(null);
     }
 
     /// <summary>

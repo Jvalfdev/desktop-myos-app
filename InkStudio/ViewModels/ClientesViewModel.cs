@@ -230,6 +230,29 @@ public partial class ClientesViewModel : ViewModelBase
 
     #endregion
 
+    #region Métodos de ayuda para ficha de cliente
+
+    /// <summary>
+    /// Refresca la ficha del cliente actualmente seleccionada, si coincide con el ID indicado.
+    /// </summary>
+    private async Task RefrescarFichaClientePorIdAsync(int clienteId)
+    {
+        if (!MostrarFicha || ClienteSeleccionado == null) 
+            return;
+
+        if (ClienteSeleccionado.Id != clienteId)
+            return;
+
+        // Buscar el cliente en la lista actual para trabajar siempre con la instancia actual
+        var clienteEnLista = Clientes.FirstOrDefault(c => c.Id == clienteId);
+        if (clienteEnLista == null)
+            return;
+
+        await VerFichaCliente(clienteEnLista);
+    }
+
+    #endregion
+
     #region Comandos - CRUD
 
     /// <summary>
@@ -417,7 +440,11 @@ public partial class ClientesViewModel : ViewModelBase
                     if (ConsentimientoFirmaVM == null)
                     {
                         ConsentimientoFirmaVM = new ConsentimientoFirmaViewModel();
-                        ConsentimientoFirmaVM.FirmaCompletada += async (s, cliente) => await CargarClientes();
+                        ConsentimientoFirmaVM.FirmaCompletada += async (s, cliente) =>
+                        {
+                            await CargarClientes();
+                            await RefrescarFichaClientePorIdAsync(cliente.Id);
+                        };
                     }
                     await ConsentimientoFirmaVM.AbrirModal(clienteGuardado, TipoConsentimiento.RGPD);
                     
@@ -446,6 +473,9 @@ public partial class ClientesViewModel : ViewModelBase
             }
 
             await CargarClientes();
+
+            // Si la ficha de este cliente está abierta, refrescarla para reflejar cambios y consentimientos
+            await RefrescarFichaClientePorIdAsync(clienteGuardado.Id);
         }
         catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("UNIQUE") == true || 
                                             ex.Message.Contains("UNIQUE") == true)
@@ -611,6 +641,7 @@ public partial class ClientesViewModel : ViewModelBase
                 ConsentimientoFirmaVM.FirmaCompletada += async (s, clienteCompletado) => 
                 {
                     await CargarClientes(); // Recargar lista después de firmar
+                    await RefrescarFichaClientePorIdAsync(clienteCompletado.Id);
                 };
             }
             await ConsentimientoFirmaVM.AbrirModal(clienteAFirmar, TipoConsentimiento.RGPD);
