@@ -51,6 +51,23 @@ public partial class AgendaViewModel : ViewModelBase
         public int Fila { get; set; }         // Índice en HorasSemana
         public int RowSpan { get; set; }      // Número de slots de 30 minutos que ocupa
         
+        /// <summary>
+        /// Lista de citas superpuestas en la misma posición (incluyendo esta).
+        /// Si hay más de una, significa que hay superposiciones.
+        /// </summary>
+        public List<CitaSemanaInfo> CitasSuperpuestas { get; set; } = new();
+        
+        /// <summary>
+        /// Índice de esta cita dentro del grupo de citas superpuestas (para apilar visualmente).
+        /// </summary>
+        public int IndiceEnGrupo { get; set; } = 0;
+        
+        /// <summary>
+        /// Número máximo de citas que se solapan simultáneamente en cualquier punto del tiempo.
+        /// Se usa para calcular el ancho de cada cita cuando hay superposiciones.
+        /// </summary>
+        public int MaxSuperposicionesSimultaneas { get; set; } = 1;
+        
         private double _left;
         public double Left 
         { 
@@ -78,6 +95,16 @@ public partial class AgendaViewModel : ViewModelBase
             get => _height; 
             set => SetProperty(ref _height, value); 
         }
+        
+        /// <summary>
+        /// Indica si esta cita tiene otras citas superpuestas.
+        /// </summary>
+        public bool TieneSuperposiciones => CitasSuperpuestas.Count > 1;
+        
+        /// <summary>
+        /// Número total de citas superpuestas en esta posición.
+        /// </summary>
+        public int NumeroCitasSuperpuestas => CitasSuperpuestas.Count;
     }
 
     #endregion
@@ -725,6 +752,47 @@ public partial class AgendaViewModel : ViewModelBase
                 cita.Id, columna, fila, rowSpan, cita.HoraInicio, columna * anchoColumnaBase, fila * altoFila);
         }
 
+        // Detectar y agrupar citas superpuestas
+        DetectarCitasSuperpuestas();
+        
+        // Recalcular las posiciones Left, Top, Width, Height después de detectar superposiciones
+        // Esto asegura que las posiciones visuales se actualicen correctamente
+        // Usar las mismas constantes que se usaron al crear las citas
+        const double anchoColumnaRecalc = 120.0;
+        const double altoFilaRecalc = 32.0;
+        
+        foreach (var citaInfo in CitasSemana)
+        {
+            var leftRecalc = citaInfo.Columna * anchoColumnaRecalc + 2;
+            var topRecalc = citaInfo.Fila * altoFilaRecalc;
+            var widthRecalc = anchoColumnaRecalc - 6;
+            var heightRecalc = citaInfo.RowSpan * altoFilaRecalc - 1;
+            
+            // Si hay citas superpuestas, ajustar ancho y posición
+            if (citaInfo.TieneSuperposiciones && citaInfo.MaxSuperposicionesSimultaneas > 1)
+            {
+                var maxSuperposiciones = citaInfo.MaxSuperposicionesSimultaneas;
+                var anchoDisponible = anchoColumnaRecalc - 6;
+                var anchoPorCita = anchoDisponible / maxSuperposiciones;
+                var espacioEntreCitas = 2.0;
+                
+                widthRecalc = anchoPorCita - espacioEntreCitas;
+                leftRecalc = citaInfo.Columna * anchoColumnaRecalc + 2 + (citaInfo.IndiceEnGrupo * anchoPorCita);
+                
+                Log.Debug("📐 Recalculando cita {CitaId}: TieneSuperposiciones={Tiene}, Índice={Indice}, MaxSuperposiciones={Max}, Width={Width}, Left={Left}", 
+                    citaInfo.Cita.Id, citaInfo.TieneSuperposiciones, citaInfo.IndiceEnGrupo, maxSuperposiciones, widthRecalc, leftRecalc);
+            }
+            
+            // Actualizar propiedades (esto disparará PropertyChanged si cambian)
+            // IMPORTANTE: Actualizar todas las propiedades para asegurar que se notifiquen los cambios
+            citaInfo.Left = leftRecalc;
+            citaInfo.Top = topRecalc;
+            citaInfo.Width = widthRecalc;
+            citaInfo.Height = heightRecalc;
+        }
+        
+        Log.Information("✅ Posiciones recalculadas para {Count} citas después de detectar superposiciones", CitasSemana.Count);
+
         Log.Information("✅ Posiciones de citas calculadas: {Count} citas posicionadas en el calendario semanal (de {TotalCitas} citas totales)", 
             CitasSemana.Count, Citas.Count);
         if (CitasSemana.Count > 0)
@@ -747,6 +815,229 @@ public partial class AgendaViewModel : ViewModelBase
         else
         {
             Log.Warning("⚠️ No se posicionaron citas. Total citas en período: {Count}", Citas.Count);
+        }
+    }
+
+    /// <summary>
+    /// Detecta citas superpuestas (que ocupan la misma columna y se solapan en el tiempo).
+    /// Agrupa las citas superpuestas y calcula sus índices para apilarlas visualmente.
+    /// Usa un algoritmo de "sweep line" para calcular el número máximo de citas superpuestas
+    /// en cualquier punto del tiempo, permitiendo manejar superposiciones parciales.
+    /// </summary>
+    private void DetectarCitasSuperpuestas()
+    {
+        // Primero, limpiar información previa de superposiciones
+        foreach (var cita in CitasSemana)
+        {
+            cita.CitasSuperpuestas.Clear();
+            cita.IndiceEnGrupo = 0;
+        }
+        
+        // Agrupar citas por columna (día)
+        var citasPorColumna = CitasSemana.GroupBy(c => c.Columna).ToList();
+        
+        foreach (var grupoColumna in citasPorColumna)
+        {
+            var citasEnColumna = grupoColumna.OrderBy(c => c.Fila).ThenBy(c => c.Cita.HoraInicio).ToList();
+            
+            if (citasEnColumna.Count <= 1) continue;
+            
+            // Usar un algoritmo de "sweep line" para encontrar grupos de superposición
+            // y calcular el número máximo de citas superpuestas en cualquier momento
+            var gruposSuperposicion = EncontrarGruposSuperposicion(citasEnColumna);
+            
+            // Para cada grupo de superposición, calcular índices y asignar posiciones
+            foreach (var grupo in gruposSuperposicion)
+            {
+                if (grupo.Count <= 1) continue;
+                
+                // Calcular el número máximo de citas que se solapan simultáneamente
+                var maxSuperposiciones = CalcularMaxSuperposicionesSimultaneas(grupo);
+                
+                // Ordenar por hora de inicio para asignar índices de izquierda a derecha
+                // IMPORTANTE: Ordenar por hora de inicio asegura que las citas que empiezan primero
+                // obtengan índices más bajos (izquierda), lo que es más intuitivo visualmente
+                var citasOrdenadas = grupo.OrderBy(c => c.Fila).ThenBy(c => c.Cita.HoraInicio).ToList();
+                
+                Log.Debug("🔍 Procesando grupo de {Count} citas superpuestas, máximo simultáneas: {Max}", 
+                    grupo.Count, maxSuperposiciones);
+                foreach (var c in citasOrdenadas)
+                {
+                    Log.Debug("  📍 Cita {Id}: Fila={Fila}, RowSpan={Span}, Hora={Hora}", 
+                        c.Cita.Id, c.Fila, c.RowSpan, c.Cita.HoraInicio);
+                }
+                
+                // Asignar índices usando un algoritmo greedy: asignar la primera posición disponible
+                AsignarIndicesGrupo(citasOrdenadas, maxSuperposiciones);
+                
+                // Verificar que todas las citas tienen índices asignados
+                foreach (var c in citasOrdenadas)
+                {
+                    Log.Debug("  ✅ Cita {Id} -> Índice {Indice}", c.Cita.Id, c.IndiceEnGrupo);
+                }
+                
+                // Asignar el grupo completo a todas las citas
+                foreach (var cita in grupo)
+                {
+                    cita.CitasSuperpuestas = grupo;
+                    cita.MaxSuperposicionesSimultaneas = maxSuperposiciones;
+                }
+                
+                Log.Information("🔗 Grupo de superposición en columna {Columna}: {Count} citas, máximo simultáneas: {Max}", 
+                    grupo[0].Columna, grupo.Count, maxSuperposiciones);
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Encuentra grupos de citas que se solapan entre sí (transitivamente).
+    /// </summary>
+    private List<List<CitaSemanaInfo>> EncontrarGruposSuperposicion(List<CitaSemanaInfo> citasEnColumna)
+    {
+        var grupos = new List<List<CitaSemanaInfo>>();
+        var procesadas = new HashSet<CitaSemanaInfo>();
+        
+        foreach (var cita in citasEnColumna)
+        {
+            if (procesadas.Contains(cita)) continue;
+            
+            // Encontrar todas las citas que se solapan con esta (transitivamente)
+            var grupo = new List<CitaSemanaInfo>();
+            var porProcesar = new Queue<CitaSemanaInfo>();
+            porProcesar.Enqueue(cita);
+            
+            while (porProcesar.Count > 0)
+            {
+                var actual = porProcesar.Dequeue();
+                if (procesadas.Contains(actual)) continue;
+                
+                procesadas.Add(actual);
+                grupo.Add(actual);
+                
+                // Buscar todas las citas que se solapan con la actual
+                foreach (var otra in citasEnColumna)
+                {
+                    if (procesadas.Contains(otra)) continue;
+                    
+                    var finActual = actual.Fila + actual.RowSpan;
+                    var finOtra = otra.Fila + otra.RowSpan;
+                    
+                    // Se solapan si: (filaActual < finOtra) && (filaOtra < finActual)
+                    if (actual.Fila < finOtra && otra.Fila < finActual)
+                    {
+                        porProcesar.Enqueue(otra);
+                    }
+                }
+            }
+            
+            if (grupo.Count > 1)
+            {
+                grupos.Add(grupo);
+            }
+        }
+        
+        return grupos;
+    }
+    
+    /// <summary>
+    /// Calcula el número máximo de citas que se solapan simultáneamente en cualquier punto del tiempo.
+    /// </summary>
+    private int CalcularMaxSuperposicionesSimultaneas(List<CitaSemanaInfo> grupo)
+    {
+        if (grupo.Count <= 1) return grupo.Count;
+        
+        // Crear eventos de inicio y fin
+        var eventos = new List<(int fila, bool esInicio, CitaSemanaInfo cita)>();
+        
+        foreach (var cita in grupo)
+        {
+            eventos.Add((cita.Fila, true, cita));
+            eventos.Add((cita.Fila + cita.RowSpan, false, cita));
+        }
+        
+        // Ordenar eventos por fila, y si hay empate, los finales antes que los iniciales
+        eventos.Sort((a, b) => 
+        {
+            var comparacion = a.fila.CompareTo(b.fila);
+            if (comparacion != 0) return comparacion;
+            // Si hay empate, los finales van primero (para no contar mal en el límite)
+            return a.esInicio == b.esInicio ? 0 : (a.esInicio ? 1 : -1);
+        });
+        
+        // Sweep line: contar citas activas en cada punto
+        int maxSuperposiciones = 0;
+        int citasActivas = 0;
+        
+        foreach (var evento in eventos)
+        {
+            if (evento.esInicio)
+            {
+                citasActivas++;
+                maxSuperposiciones = Math.Max(maxSuperposiciones, citasActivas);
+            }
+            else
+            {
+                citasActivas--;
+            }
+        }
+        
+        return maxSuperposiciones;
+    }
+    
+    /// <summary>
+    /// Asigna índices a las citas del grupo usando un algoritmo greedy mejorado.
+    /// Cada cita obtiene el índice más bajo disponible en su rango de tiempo.
+    /// Este algoritmo asegura que las citas que se solapan (incluso parcialmente) siempre tengan índices diferentes.
+    /// </summary>
+    private void AsignarIndicesGrupo(List<CitaSemanaInfo> citasOrdenadas, int maxIndices)
+    {
+        // Inicializar todos los índices a -1 (no asignado)
+        foreach (var cita in citasOrdenadas)
+        {
+            cita.IndiceEnGrupo = -1;
+        }
+        
+        // Para cada cita, encontrar el índice más bajo disponible
+        foreach (var cita in citasOrdenadas)
+        {
+            var indicesOcupados = new HashSet<int>();
+            var inicioCita = cita.Fila;
+            var finCita = cita.Fila + cita.RowSpan;
+            
+            // Buscar todas las citas que se solapan con esta y ver qué índices están ocupados
+            foreach (var otra in citasOrdenadas)
+            {
+                if (otra == cita || otra.IndiceEnGrupo < 0) continue;
+                
+                var inicioOtra = otra.Fila;
+                var finOtra = otra.Fila + otra.RowSpan;
+                
+                // Si se solapan (incluso parcialmente): inicioCita < finOtra && inicioOtra < finCita
+                if (inicioCita < finOtra && inicioOtra < finCita)
+                {
+                    indicesOcupados.Add(otra.IndiceEnGrupo);
+                }
+            }
+            
+            // Asignar el primer índice disponible (0, 1, 2, ...)
+            for (int i = 0; i < maxIndices; i++)
+            {
+                if (!indicesOcupados.Contains(i))
+                {
+                    cita.IndiceEnGrupo = i;
+                    Log.Debug("📌 Cita {CitaId} asignada al índice {Indice} (inicio={Inicio}, fin={Fin})", 
+                        cita.Cita.Id, i, inicioCita, finCita);
+                    break;
+                }
+            }
+            
+            // Si no se pudo asignar un índice (no debería pasar), asignar el último disponible
+            if (cita.IndiceEnGrupo < 0)
+            {
+                cita.IndiceEnGrupo = maxIndices - 1;
+                Log.Warning("⚠️ No se pudo asignar índice a cita {CitaId}, usando {Indice}", 
+                    cita.Cita.Id, cita.IndiceEnGrupo);
+            }
         }
     }
 
@@ -1034,6 +1325,108 @@ public partial class AgendaViewModel : ViewModelBase
     {
         MostrarFormulario = false;
         MensajeError = string.Empty;
+    }
+
+    /// <summary>
+    /// Mueve una cita a una nueva fecha y hora.
+    /// </summary>
+    /// <param name="citaId">ID de la cita a mover.</param>
+    /// <param name="nuevaFecha">Nueva fecha para la cita.</param>
+    /// <param name="nuevaHora">Nueva hora de inicio para la cita.</param>
+    public async Task MoverCitaAsync(int citaId, DateTime nuevaFecha, TimeSpan nuevaHora)
+    {
+        try
+        {
+            Cargando = true;
+            
+            // Buscar la cita en la base de datos
+            var cita = await _db.Citas.FirstOrDefaultAsync(c => c.Id == citaId);
+            if (cita == null)
+            {
+                Log.Warning("No se encontró la cita {CitaId} para mover", citaId);
+                return;
+            }
+
+            // Validar que la nueva fecha/hora sea válida
+            var nuevaFechaHora = nuevaFecha.Date + nuevaHora;
+            if (nuevaFechaHora < DateTime.Now)
+            {
+                Log.Warning("No se puede mover la cita {CitaId} a una fecha/hora pasada: {FechaHora}", 
+                    citaId, nuevaFechaHora);
+                MensajeError = "No se puede mover una cita a una fecha/hora pasada";
+                return;
+            }
+
+            // Actualizar la cita
+            var fechaAnterior = cita.Fecha;
+            var horaAnterior = cita.HoraInicio;
+            
+            cita.Fecha = nuevaFecha.Date;
+            cita.HoraInicio = nuevaHora;
+            
+            await _db.SaveChangesAsync();
+            
+            Log.Information("✅ Cita {CitaId} movida: {FechaAnterior} {HoraAnterior} -> {NuevaFecha} {NuevaHora}", 
+                citaId, fechaAnterior, horaAnterior, nuevaFecha, nuevaHora);
+            
+            // Recargar las citas para actualizar la vista
+            await CargarCitas();
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error al mover cita {CitaId}", citaId);
+            MensajeError = $"Error al mover la cita: {ex.Message}";
+        }
+        finally
+        {
+            Cargando = false;
+        }
+    }
+
+    /// <summary>
+    /// Cambia la duración de una cita.
+    /// </summary>
+    /// <param name="citaId">ID de la cita a redimensionar.</param>
+    /// <param name="nuevaDuracionMinutos">Nueva duración en minutos.</param>
+    public async Task CambiarDuracionCitaAsync(int citaId, int nuevaDuracionMinutos)
+    {
+        try
+        {
+            Cargando = true;
+            
+            // Buscar la cita en la base de datos
+            var cita = await _db.Citas.FirstOrDefaultAsync(c => c.Id == citaId);
+            if (cita == null)
+            {
+                Log.Warning("No se encontró la cita {CitaId} para cambiar duración", citaId);
+                return;
+            }
+
+            // Validar duración mínima y máxima
+            nuevaDuracionMinutos = Math.Max(30, nuevaDuracionMinutos); // Mínimo 30 minutos
+            nuevaDuracionMinutos = Math.Min(480, nuevaDuracionMinutos); // Máximo 8 horas
+
+            // Actualizar la duración
+            var duracionAnterior = cita.DuracionMinutos;
+            cita.DuracionMinutos = nuevaDuracionMinutos;
+            
+            await _db.SaveChangesAsync();
+            
+            Log.Information("✅ Duración de cita {CitaId} cambiada: {DuracionAnterior}min -> {NuevaDuracion}min", 
+                citaId, duracionAnterior, nuevaDuracionMinutos);
+            
+            // Recargar las citas para actualizar la vista
+            await CargarCitas();
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error al cambiar duración de cita {CitaId}", citaId);
+            MensajeError = $"Error al cambiar la duración: {ex.Message}";
+        }
+        finally
+        {
+            Cargando = false;
+        }
     }
 
     /// <summary>
