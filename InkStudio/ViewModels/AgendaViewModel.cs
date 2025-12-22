@@ -17,6 +17,30 @@ namespace InkStudio.ViewModels;
 /// </summary>
 public partial class AgendaViewModel : ViewModelBase
 {
+    #region Tipos auxiliares
+
+    /// <summary>
+    /// Información de un día en la vista semanal.
+    /// </summary>
+    public class DiaSemanaInfo
+    {
+        public DateTime Fecha { get; set; }
+        public string Etiqueta { get; set; } = string.Empty; // Ej: "Lun 17"
+        public bool EsHoy { get; set; }
+    }
+
+    /// <summary>
+    /// Slot horario en la vista semanal (ej: 08:00, 08:30) con información
+    /// de si es una hora "en punto" (para dibujar líneas más fuertes).
+    /// </summary>
+    public class HoraSemanaSlot
+    {
+        public string Etiqueta { get; set; } = string.Empty; // "08:00"
+        public bool EsHoraCompleta { get; set; }             // true si mm == 00
+    }
+
+    #endregion
+
     #region Campos Privados
 
     /// <summary>
@@ -56,16 +80,36 @@ public partial class AgendaViewModel : ViewModelBase
     partial void OnVistaActualChanged(VistaAgenda value)
     {
         OnPropertyChanged(nameof(MostrarLista));
+        OnPropertyChanged(nameof(MostrarSemana));
+
+        // Cuando entramos en vista Semana, recalcular la semana actual
+        if (value == VistaAgenda.Semana)
+        {
+            ActualizarSemana();
+        }
     }
 
-    // En este momento eliminamos el calendario visual de terceros (CalendarControl).
-    // Mantendremos solo la lista diaria y, más adelante, implementaremos
-    // nuestro propio calendario semanal personalizado.
+    /// <summary>
+    /// Indica si mostrar la lista de citas (modo Día o Mes).
+    /// </summary>
+    public bool MostrarLista => VistaActual != VistaAgenda.Semana;
 
     /// <summary>
-    /// Indica si mostrar la lista de citas (usamos la misma vista para todos los modos por ahora).
+    /// Indica si mostrar la nueva vista semanal personalizada.
     /// </summary>
-    public bool MostrarLista => true;
+    public bool MostrarSemana => VistaActual == VistaAgenda.Semana;
+
+    /// <summary>
+    /// Información de los días de la semana actual (para la cabecera del calendario semanal).
+    /// </summary>
+    [ObservableProperty]
+    private ObservableCollection<DiaSemanaInfo> _diasSemana = new();
+
+    /// <summary>
+    /// Lista de horas para la vista semanal (08:00, 08:30, ..., 22:00).
+    /// </summary>
+    [ObservableProperty]
+    private ObservableCollection<HoraSemanaSlot> _horasSemana = new();
 
     /// <summary>
     /// Lista de citas para el período seleccionado.
@@ -360,7 +404,7 @@ public partial class AgendaViewModel : ViewModelBase
 
     #endregion
 
-    #region Comandos - Carga de Datos
+    #region Comandos - Carga de Datos y Vista Semanal
 
     /// <summary>
     /// Carga las citas del período seleccionado.
@@ -426,6 +470,12 @@ public partial class AgendaViewModel : ViewModelBase
             Citas = new ObservableCollection<Cita>(listaOrdenada);
             TotalCitas = listaOrdenada.Count;
 
+            // Si estamos en vista semanal, actualizar la estructura de semana
+            if (VistaActual == VistaAgenda.Semana)
+            {
+                ActualizarSemana();
+            }
+
             var fechaLog = FechaSeleccionada ?? DateTimeOffset.Now.Date;
             Log.Debug("Citas cargadas: {Count} citas para {Vista} del {Fecha}", 
                 TotalCitas, VistaActual, fechaLog.Date.ToString("dd/MM/yyyy"));
@@ -438,6 +488,61 @@ public partial class AgendaViewModel : ViewModelBase
         finally
         {
             Cargando = false;
+        }
+    }
+
+    /// <summary>
+    /// Calcula los días y horas de la semana actual para la vista semanal personalizada.
+    /// </summary>
+    private void ActualizarSemana()
+    {
+        // Determinar la fecha de referencia (día seleccionado o hoy)
+        var referenciaOffset = FechaSeleccionada ?? DateTimeOffset.Now.Date;
+        var referencia = referenciaOffset.Date;
+
+        // Calcular lunes de la semana (Lunes = 0)
+        var diasDesdeLunes = ((int)referencia.DayOfWeek + 6) % 7;
+        var inicioSemana = referencia.AddDays(-diasDesdeLunes);
+
+        DiasSemana.Clear();
+        for (int i = 0; i < 7; i++)
+        {
+            var fecha = inicioSemana.AddDays(i);
+            var esHoy = fecha.Date == DateTime.Today;
+
+            string nombreDia = fecha.DayOfWeek switch
+            {
+                DayOfWeek.Monday => "Lun",
+                DayOfWeek.Tuesday => "Mar",
+                DayOfWeek.Wednesday => "Mié",
+                DayOfWeek.Thursday => "Jue",
+                DayOfWeek.Friday => "Vie",
+                DayOfWeek.Saturday => "Sáb",
+                DayOfWeek.Sunday => "Dom",
+                _ => fecha.ToString("ddd")
+            };
+
+            var etiqueta = $"{nombreDia} {fecha:dd}";
+
+            DiasSemana.Add(new DiaSemanaInfo
+            {
+                Fecha = fecha,
+                Etiqueta = etiqueta,
+                EsHoy = esHoy
+            });
+        }
+
+        // Generar lista de horas (08:00 - 22:00 en pasos de 30 minutos)
+        HorasSemana.Clear();
+        var horaInicio = TimeSpan.FromHours(8);
+        var horaFin = TimeSpan.FromHours(22);
+        for (var hora = horaInicio; hora <= horaFin; hora = hora.Add(TimeSpan.FromMinutes(30)))
+        {
+            HorasSemana.Add(new HoraSemanaSlot
+            {
+                Etiqueta = hora.ToString(@"hh\:mm"),
+                EsHoraCompleta = hora.Minutes == 0
+            });
         }
     }
 
