@@ -248,9 +248,9 @@ Implementar un sistema completo de gestión de consentimientos que permita:
 | 4.2 | Integrar QRCoder | ✅ | Generación de QR desde URL/texto |
 | 4.3 | Convertir a Bitmap de Avalonia | ✅ | Conversión de System.Drawing.Bitmap a Avalonia.Bitmap |
 | 4.4 | Métodos adicionales | ✅ | Guardar en archivo, generar como bytes |
-| 4.5 | Mostrar QR en modal | ⏳ | Pendiente: Integrar en ViewModel/View |
-| 4.6 | Mostrar URL como texto | ⏳ | Pendiente: Integrar en ViewModel/View |
-| 4.7 | Botón "Copiar URL" | ⏳ | Pendiente: Integrar en ViewModel/View |
+| 4.5 | Mostrar QR en modal | ✅ | Integrado en `ConsentimientoFirmaView` |
+| 4.6 | Mostrar URL como texto | ✅ | Integrado en `ConsentimientoFirmaViewModel`/View |
+| 4.7 | Botón "Copiar URL" | ✅ | Implementado (por ahora log + estado visual) |
 
 ### Fase 5: Generación de PDFs ✅
 
@@ -306,17 +306,17 @@ Implementar un sistema completo de gestión de consentimientos que permita:
 | 8.6 | Aviso visual en lista de trabajos | ✅ | Badges "✅ Consentimiento" / "⚠️ Sin consentimiento" y botón "Firmar consentimiento" |
 | 8.7 | Integración en Agenda (citas) | ✅ | Aviso cuando la cita tiene trabajo sin consentimiento firmado y acceso a firma desde la cita |
 
-### Fase 9: Vista de Consentimientos ⏳
+### Fase 9: Vista de Consentimientos ✅
 
 | # | Tarea | Estado | Notas |
 |---|-------|--------|-------|
-| 9.1 | Crear `ConsentimientosViewModel.cs` | ⏳ | Gestión de consentimientos |
-| 9.2 | Crear `ConsentimientosView.axaml` | ⏳ | Lista de consentimientos |
-| 9.3 | Integrar en vista de cliente | ⏳ | Sección "Consentimientos" |
-| 9.4 | Implementar ver PDF | ⏳ | Abrir PDF en visor |
-| 9.5 | Implementar descargar PDF | ⏳ | Guardar en carpeta del usuario |
-| 9.6 | Implementar filtros | ⏳ | Por tipo de consentimiento |
-| 9.7 | Mostrar estado (Firmado/Pendiente) | ⏳ | Indicador visual |
+| 9.1 | Crear `ConsentimientosViewModel.cs` | ✅ | Gestión global de consentimientos con filtros por cliente y tipo |
+| 9.2 | Crear `ConsentimientosView.axaml` | ✅ | Lista global de consentimientos con acciones (ver/exportar/email) |
+| 9.3 | Integrar en navegación principal | ✅ | Entrada "Consentimientos" en el menú lateral |
+| 9.4 | Implementar ver PDF | ✅ | Abrir PDF en visor predeterminado |
+| 9.5 | Implementar descargar PDF | ✅ | Exportar PDF al Escritorio del usuario |
+| 9.6 | Implementar filtros | ✅ | Por cliente y tipo de consentimiento |
+| 9.7 | Mostrar estado (Firmado/Pendiente) | ✅ | Indicador visual en lista |
 
 ### Fase 10: Mejoras y Pulido ⏳
 
