@@ -97,7 +97,12 @@ public static class ConsentimientoService
             resultado = resultado.Replace("{TIPO_TRABAJO}", trabajo.Tipo.ToString());
             resultado = resultado.Replace("{DESCRIPCION_TRABAJO}", trabajo.Descripcion ?? "No especificada");
             resultado = resultado.Replace("{ZONA_CUERPO}", trabajo.ZonaCuerpo ?? "No especificada");
-            resultado = resultado.Replace("{DURACION_MINUTOS}", trabajo.DuracionMinutos > 0 ? trabajo.DuracionMinutos.ToString() : "No especificada");
+            // Usar la duración real si existe, si no la estimada, si no indicar no especificada
+            var minutosTrabajo = trabajo.DuracionRealMinutos
+                                 ?? trabajo.DuracionEstimadaMinutos;
+            resultado = resultado.Replace("{DURACION_MINUTOS}", minutosTrabajo.HasValue && minutosTrabajo.Value > 0
+                ? minutosTrabajo.Value.ToString()
+                : "No especificada");
             resultado = resultado.Replace("{PRECIO}", trabajo.Precio.ToString("F2"));
         }
 

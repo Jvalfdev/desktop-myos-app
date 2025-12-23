@@ -175,8 +175,17 @@ public partial class TrabajosViewModel : ViewModelBase
     [ObservableProperty]
     private DateTimeOffset? _fecha = DateTimeOffset.Now.Date;
 
+    /// <summary>
+    /// Duración estimada del trabajo en minutos (lo que planifica el artista).
+    /// </summary>
     [ObservableProperty]
-    private int _duracionMinutos = 60;
+    private int? _duracionEstimadaMinutos;
+
+    /// <summary>
+    /// Estado/fase del trabajo (Diseño, En progreso, Finalizado).
+    /// </summary>
+    [ObservableProperty]
+    private EstadoTrabajo _estadoTrabajo = EstadoTrabajo.Diseno;
 
     [ObservableProperty]
     private string? _notas;
@@ -408,12 +417,6 @@ public partial class TrabajosViewModel : ViewModelBase
                 return;
             }
 
-            if (DuracionMinutos < 1)
-            {
-                MensajeError = "La duración debe ser al menos 1 minuto";
-                return;
-            }
-
             Cargando = true;
             MensajeError = string.Empty;
 
@@ -432,7 +435,8 @@ public partial class TrabajosViewModel : ViewModelBase
                 TrabajoSeleccionado.Colores = Colores;
                 TrabajoSeleccionado.Precio = Precio;
                 TrabajoSeleccionado.Fecha = Fecha.Value.DateTime;
-                TrabajoSeleccionado.DuracionMinutos = DuracionMinutos;
+                TrabajoSeleccionado.DuracionEstimadaMinutos = DuracionEstimadaMinutos;
+                TrabajoSeleccionado.Estado = EstadoTrabajo;
                 TrabajoSeleccionado.Notas = string.IsNullOrWhiteSpace(Notas) ? null : Notas.Trim();
             }
             else
@@ -452,7 +456,8 @@ public partial class TrabajosViewModel : ViewModelBase
                     Colores = Colores,
                     Precio = Precio,
                     Fecha = Fecha.Value.DateTime,
-                    DuracionMinutos = DuracionMinutos,
+                    DuracionEstimadaMinutos = DuracionEstimadaMinutos,
+                    Estado = EstadoTrabajo,
                     Notas = string.IsNullOrWhiteSpace(Notas) ? null : Notas.Trim(),
                     FechaCreacion = DateTime.Now
                 };
@@ -862,6 +867,9 @@ public partial class TrabajosViewModel : ViewModelBase
     /// </summary>
     private void LimpiarFormulario()
     {
+        // Al crear un nuevo trabajo no debe influir el trabajo seleccionado en la lista
+        TrabajoSeleccionado = null;
+
         ClienteSeleccionado = null;
         TipoTrabajo = TipoTrabajo.Tatuaje;
         Descripcion = string.Empty;
@@ -871,7 +879,8 @@ public partial class TrabajosViewModel : ViewModelBase
         Colores = false;
         Precio = 0;
         Fecha = DateTimeOffset.Now.Date;
-        DuracionMinutos = 60;
+        DuracionEstimadaMinutos = null;
+        EstadoTrabajo = EstadoTrabajo.Diseno;
         Notas = null;
         MensajeError = string.Empty;
     }
@@ -895,7 +904,8 @@ public partial class TrabajosViewModel : ViewModelBase
         Colores = trabajo.Colores;
         Precio = trabajo.Precio;
         Fecha = new DateTimeOffset(trabajo.Fecha);
-        DuracionMinutos = trabajo.DuracionMinutos;
+        DuracionEstimadaMinutos = trabajo.DuracionEstimadaMinutos;
+        EstadoTrabajo = trabajo.Estado;
         Notas = trabajo.Notas;
         MensajeError = string.Empty;
         

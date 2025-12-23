@@ -1305,6 +1305,12 @@ public partial class AgendaViewModel : ViewModelBase
                 await _db.SaveChangesAsync();
                 Log.Information("✅ Cita {CitaId} actualizada - HoraInicio guardada: {HoraInicio}", 
                     CitaSeleccionada.Id, CitaSeleccionada.HoraInicio);
+
+                // Si la cita está vinculada a un trabajo, recalcular su duración real
+                if (CitaSeleccionada.TrabajoId.HasValue)
+                {
+                    await RecalcularDuracionRealTrabajoAsync(CitaSeleccionada.TrabajoId.Value);
+                }
             }
             else
             {
@@ -1330,6 +1336,9 @@ public partial class AgendaViewModel : ViewModelBase
                 {
                     nuevaCita.TrabajoId = TrabajoSeleccionado.Id;
                     await _db.SaveChangesAsync();
+
+                    // Al vincular una nueva cita a un trabajo, recalcular su duración real
+                    await RecalcularDuracionRealTrabajoAsync(TrabajoSeleccionado.Id);
                 }
                 
                 Log.Information("Nueva cita creada para cliente {ClienteId} vinculada a trabajo {TrabajoId}", 
@@ -1476,7 +1485,9 @@ public partial class AgendaViewModel : ViewModelBase
             Cargando = true;
             
             // Buscar la cita en la base de datos
-            var cita = await _db.Citas.FirstOrDefaultAsync(c => c.Id == citaId);
+            var cita = await _db.Citas
+                .Include(c => c.Trabajo)
+                .FirstOrDefaultAsync(c => c.Id == citaId);
             if (cita == null)
             {
                 Log.Warning("No se encontró la cita {CitaId} para cambiar duración", citaId);
@@ -1495,6 +1506,12 @@ public partial class AgendaViewModel : ViewModelBase
             
             Log.Information("✅ Duración de cita {CitaId} cambiada: {DuracionAnterior}min -> {NuevaDuracion}min", 
                 citaId, duracionAnterior, nuevaDuracionMinutos);
+
+            // Recalcular duración real del trabajo asociado (si lo hay)
+            if (cita.TrabajoId.HasValue)
+            {
+                await RecalcularDuracionRealTrabajoAsync(cita.TrabajoId.Value);
+            }
             
             // Recargar las citas para actualizar la vista
             await CargarCitas();
@@ -1524,6 +1541,12 @@ public partial class AgendaViewModel : ViewModelBase
             await _db.SaveChangesAsync();
             
             Log.Information("Estado de cita {CitaId} cambiado a {Estado}", CitaSeleccionada.Id, nuevoEstado);
+
+            // Si la cita pertenece a un trabajo, recalcular la duración real del trabajo
+            if (CitaSeleccionada.TrabajoId.HasValue)
+            {
+                await RecalcularDuracionRealTrabajoAsync(CitaSeleccionada.TrabajoId.Value);
+            }
             
             await CargarCitas();
         }
@@ -1531,6 +1554,43 @@ public partial class AgendaViewModel : ViewModelBase
         {
             Log.Error(ex, "Error al cambiar estado de cita {CitaId}", CitaSeleccionada.Id);
             MensajeError = $"Error: {ex.Message}";
+        }
+    }
+
+    /// <summary>
+    /// Recalcula la duración real total de un trabajo a partir de las citas asociadas.
+    /// Solo suma las citas marcadas como Completadas o EnProceso (trabajo efectivo).
+    /// </summary>
+    /// <param name="trabajoId">ID del trabajo.</param>
+    private async Task RecalcularDuracionRealTrabajoAsync(int trabajoId)
+    {
+        try
+        {
+            var trabajo = await _db.Trabajos
+                .Include(t => t.Citas)
+                .FirstOrDefaultAsync(t => t.Id == trabajoId);
+
+            if (trabajo == null)
+            {
+                Log.Warning("No se encontró el trabajo {TrabajoId} para recalcular duración real", trabajoId);
+                return;
+            }
+
+            // Sumar solo citas efectivas (en proceso o completadas)
+            var minutosReales = trabajo.Citas
+                .Where(c => c.Estado == EstadoCita.EnProceso || c.Estado == EstadoCita.Completada)
+                .Sum(c => c.DuracionMinutos);
+
+            trabajo.DuracionRealMinutos = minutosReales > 0 ? minutosReales : null;
+
+            await _db.SaveChangesAsync();
+
+            Log.Information("⏱ Duración real de trabajo {TrabajoId} actualizada a {Minutos} minutos", 
+                trabajoId, trabajo.DuracionRealMinutos ?? 0);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error al recalcular la duración real del trabajo {TrabajoId}", trabajoId);
         }
     }
 

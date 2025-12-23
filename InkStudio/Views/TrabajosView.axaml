@@ -166,8 +166,8 @@
                                             </TextBlock>
                                             <TextBlock>
                                                 <Run Text="⏱️ "/>
-                                                <Run Text="{Binding DuracionMinutos}"/>
-                                                <Run Text=" min"/>
+                                                <Run Text="{Binding DuracionEstimadaMinutos}"/>
+                                                <Run Text=" min (estimado)"/>
                                             </TextBlock>
                                         </StackPanel>
                                     </StackPanel>
@@ -381,11 +381,11 @@
                                 </StackPanel>
                             </Grid>
 
-                            <!-- Duración -->
-                            <TextBlock Text="Duración (minutos) *" Opacity="0.7" Margin="16,16,0,5"/>
-                            <NumericUpDown Value="{Binding DuracionMinutos}"
-                                           Minimum="1"
-                                           Maximum="480"
+                            <!-- Duración estimada -->
+                            <TextBlock Text="Duración estimada (min)" Opacity="0.7" Margin="16,16,0,5"/>
+                            <NumericUpDown Value="{Binding DuracionEstimadaMinutos}"
+                                           Minimum="0"
+                                           Maximum="1440"
                                            Increment="15"
                                            Height="40"
                                            IsEnabled="{Binding !TrabajoSeleccionado.TieneConsentimiento}"
@@ -582,13 +582,19 @@
                             Command="{Binding FirmarConsentimientoTrabajoCommand}"
                             CommandParameter="{Binding TrabajoPendienteConsentimiento}"
                             Classes="btn-primary"
-                            MinWidth="140"
-                            Height="36"/>
+                            MinWidth="150"
+                            Height="40"
+                            Padding="16,0"
+                            HorizontalContentAlignment="Center"
+                            VerticalContentAlignment="Center"/>
                     <Button Content="Más tarde"
                             Command="{Binding CerrarAvisoConsentimientoCommand}"
                             Classes="btn-secondary"
-                            MinWidth="100"
-                            Height="36"/>
+                            MinWidth="110"
+                            Height="40"
+                            Padding="16,0"
+                            HorizontalContentAlignment="Center"
+                            VerticalContentAlignment="Center"/>
                 </StackPanel>
             </Grid>
         </Border>

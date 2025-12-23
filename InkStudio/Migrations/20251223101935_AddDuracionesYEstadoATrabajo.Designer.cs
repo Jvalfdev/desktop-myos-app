@@ -3,6 +3,7 @@ using System;
 using InkStudio.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace InkStudio.Migrations
 {
     [DbContext(typeof(InkStudioDbContext))]
-    partial class InkStudioDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251223101935_AddDuracionesYEstadoATrabajo")]
+    partial class AddDuracionesYEstadoATrabajo
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.0");
@@ -240,6 +243,9 @@ namespace InkStudio.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<int?>("DuracionEstimadaMinutos")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("DuracionMinutos")
                         .HasColumnType("INTEGER");
 
                     b.Property<int?>("DuracionRealMinutos")

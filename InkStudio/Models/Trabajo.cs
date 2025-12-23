@@ -75,9 +75,23 @@ public class Trabajo
     public DateTime Fecha { get; set; } = DateTime.Now;
 
     /// <summary>
-    /// Duración real del trabajo en minutos.
+    /// Duración estimada del trabajo en minutos (lo que planifica el artista).
     /// </summary>
-    public int DuracionMinutos { get; set; }
+    public int? DuracionEstimadaMinutos { get; set; }
+
+    /// <summary>
+    /// Duración real total del trabajo en minutos (suma de las citas realizadas).
+    /// </summary>
+    public int? DuracionRealMinutos { get; set; }
+
+    #endregion
+
+    #region Estado
+
+    /// <summary>
+    /// Estado/fase actual del trabajo (Diseño, En progreso, Finalizado).
+    /// </summary>
+    public EstadoTrabajo Estado { get; set; } = EstadoTrabajo.Diseno;
 
     #endregion
 
@@ -153,6 +167,22 @@ public class Trabajo
     /// Indica si el trabajo tiene consentimiento firmado.
     /// </summary>
     public bool TieneConsentimiento => Consentimiento != null && Consentimiento.Firmado;
+
+    /// <summary>
+    /// Duración estimada en formato TimeSpan (si está informada).
+    /// </summary>
+    public TimeSpan? DuracionEstimada =>
+        DuracionEstimadaMinutos.HasValue
+            ? TimeSpan.FromMinutes(DuracionEstimadaMinutos.Value)
+            : null;
+
+    /// <summary>
+    /// Duración real en formato TimeSpan (si está informada).
+    /// </summary>
+    public TimeSpan? DuracionReal =>
+        DuracionRealMinutos.HasValue
+            ? TimeSpan.FromMinutes(DuracionRealMinutos.Value)
+            : null;
 
     #endregion
 }

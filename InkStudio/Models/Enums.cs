@@ -79,6 +79,27 @@ public enum TipoTrabajo
 }
 
 /// <summary>
+/// Estado/fase de un trabajo en el estudio.
+/// </summary>
+public enum EstadoTrabajo
+{
+    /// <summary>
+    /// Trabajo en fase de diseño / planificación.
+    /// </summary>
+    Diseno = 0,
+
+    /// <summary>
+    /// Trabajo ya iniciado, con sesiones en curso.
+    /// </summary>
+    EnProgreso = 1,
+
+    /// <summary>
+    /// Trabajo finalizado, no se esperan más sesiones.
+    /// </summary>
+    Finalizado = 2
+}
+
+/// <summary>
 /// Tipo de consentimiento que debe firmar el cliente.
 /// </summary>
 /// <remarks>
