@@ -38,15 +38,20 @@ public static class LoggingService
         var logFile = Path.Combine(LogsFolder, "inkstudio-.log");
 
         Log.Logger = new LoggerConfiguration()
-            .MinimumLevel.Debug()
-            .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
-            .MinimumLevel.Override("System", LogEventLevel.Warning)
+            // Nivel global: solo avisos y errores hacia arriba
+            .MinimumLevel.Warning()
+            .MinimumLevel.Override("Microsoft", LogEventLevel.Error)
+            .MinimumLevel.Override("System", LogEventLevel.Error)
+            // Consola: solo WARNING y ERROR
             .WriteTo.Console(
+                restrictedToMinimumLevel: LogEventLevel.Warning,
                 outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
+            // Archivo: solo ERROR y FATAL
             .WriteTo.File(
                 path: logFile,
                 rollingInterval: RollingInterval.Day,
                 retainedFileCountLimit: 30, // Mantener 30 días de logs
+                restrictedToMinimumLevel: LogEventLevel.Error,
                 outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}",
                 shared: true)
             .CreateLogger();

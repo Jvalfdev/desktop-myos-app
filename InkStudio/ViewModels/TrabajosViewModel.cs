@@ -464,7 +464,7 @@ public partial class TrabajosViewModel : ViewModelBase
             Log.Information("Trabajo guardado exitosamente");
             
             // Obtener el trabajo guardado (nuevo o actualizado)
-            Trabajo trabajoGuardado;
+            Trabajo? trabajoGuardado = null;
             if (EsEdicion && TrabajoSeleccionado != null)
             {
                 trabajoGuardado = TrabajoSeleccionado;
@@ -472,10 +472,20 @@ public partial class TrabajosViewModel : ViewModelBase
             else
             {
                 // Para trabajos nuevos, obtener el último trabajo del cliente
+                if (ClienteSeleccionado == null)
+                {
+                    Log.Warning("ClienteSeleccionado es null al intentar obtener el trabajo guardado");
+                    MostrarFormulario = false;
+                    await CargarTrabajos();
+                    return;
+                }
+
+                var clienteId = ClienteSeleccionado!.Id;
+
                 trabajoGuardado = await _db.Trabajos
                     .Include(t => t.Cliente)
                     .Include(t => t.Consentimiento)
-                    .Where(t => t.ClienteId == ClienteSeleccionado.Id)
+                    .Where(t => t.ClienteId == clienteId)
                     .OrderByDescending(t => t.FechaCreacion)
                     .FirstOrDefaultAsync();
                 
