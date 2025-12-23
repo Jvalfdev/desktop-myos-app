@@ -26,11 +26,6 @@ public class Trabajo
     /// </summary>
     public int ClienteId { get; set; }
 
-    /// <summary>
-    /// ID de la cita asociada (opcional).
-    /// </summary>
-    public int? CitaId { get; set; }
-
     #endregion
 
     #region Detalles del Trabajo
@@ -118,9 +113,10 @@ public class Trabajo
     public Cliente Cliente { get; set; } = null!;
 
     /// <summary>
-    /// Cita de la que surgió el trabajo (si existe).
+    /// Citas/sesiones en las que se ha realizado este trabajo.
+    /// Un trabajo puede abarcar varias citas a lo largo del tiempo.
     /// </summary>
-    public Cita? Cita { get; set; }
+    public List<Cita> Citas { get; set; } = new();
 
     /// <summary>
     /// Consentimiento asociado al trabajo (si existe).

@@ -24,6 +24,12 @@ public class Cita
     /// </summary>
     public int ClienteId { get; set; }
 
+    /// <summary>
+    /// ID del trabajo asociado (opcional).
+    /// Un trabajo puede realizarse en varias citas/sesiones.
+    /// </summary>
+    public int? TrabajoId { get; set; }
+
     #endregion
 
     #region Fecha y Hora

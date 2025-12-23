@@ -49,58 +49,120 @@
         <!-- ═══════════════════════════════════════════════════════════════ -->
         <!-- CONTENIDO PRINCIPAL: LISTA DE CITAS/CALENDARIO                  -->
         <!-- ═══════════════════════════════════════════════════════════════ -->
-        <Grid Grid.Row="0" Grid.RowSpan="5" RowDefinitions="Auto,Auto,Auto,*,Auto" Margin="30">
+        <Grid Grid.Row="0" Grid.RowSpan="5" RowDefinitions="Auto,Auto,*,Auto" Margin="30">
             
             <!-- Cabecera -->
-            <StackPanel Grid.Row="0" Margin="0,0,0,20">
-                <TextBlock Text="📅 Agenda" FontSize="28" FontWeight="Bold"/>
-                <TextBlock Opacity="0.6" Margin="0,5,0,0">
-                    <Run Text="Total: "/>
-                    <Run Text="{Binding TotalCitas}"/>
-                    <Run Text=" citas"/>
-                </TextBlock>
-            </StackPanel>
-            
-            <!-- Navegación de fechas y vista -->
-            <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto,Auto,Auto" Margin="0,0,0,15">
-                <Button Grid.Column="0" Content="◀" Command="{Binding DiaAnteriorCommand}" Margin="0,0,10,0"/>
-                <DatePicker Grid.Column="1" SelectedDate="{Binding FechaSeleccionada}" Margin="0,0,10,0"/>
-                <Button Grid.Column="2" Content="▶" Command="{Binding DiaSiguienteCommand}" Margin="0,0,10,0"/>
-                <Button Grid.Column="3" Content="Hoy" Command="{Binding IrAHoyCommand}" Margin="0,0,10,0"/>
-                <Button Grid.Column="4" Content="➕ Nueva Cita" Classes="btn-primary" Command="{Binding NuevaCitaCommand}"/>
+            <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,16">
+                <!-- Título + info -->
+                <StackPanel Grid.Column="0" Orientation="Vertical">
+                    <TextBlock Text="📅 Agenda" FontSize="28" FontWeight="Bold"/>
+                    <StackPanel Orientation="Horizontal" Spacing="10" Opacity="0.7" Margin="0,4,0,0">
+                        <TextBlock>
+                            <Run Text="Total: "/>
+                            <Run Text="{Binding TotalCitas}"/>
+                            <Run Text=" citas"/>
+                        </TextBlock>
+                        <!-- Resumen de rango actual (día/semana/mes) -->
+                        <TextBlock Text="{Binding FechaSeleccionada, StringFormat='{}{0:dd/MM/yyyy}'}"
+                                   IsVisible="{Binding FechaSeleccionada}"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Acción principal -->
+                <Button Grid.Column="1"
+                        Content="➕ Nueva Cita"
+                        Classes="btn-primary"
+                        Command="{Binding NuevaCitaCommand}"
+                        MinWidth="150"
+                        Height="40"
+                        Padding="16,0"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center"
+                        HorizontalContentAlignment="Center"
+                        VerticalContentAlignment="Center"/>
             </Grid>
             
-            <!-- Selector de vista y filtros -->
-            <Grid Grid.Row="2" ColumnDefinitions="Auto,Auto,Auto,*,Auto" Margin="0,0,0,15">
-                <Button Grid.Column="0"
-                        Content="Día"
-                        Command="{Binding CambiarVistaCommand}"
-                        CommandParameter="Dia"
-                        Margin="0,0,5,0"/>
-                <Button Grid.Column="1"
-                        Content="Semana"
-                        Command="{Binding CambiarVistaCommand}"
-                        CommandParameter="Semana"
-                        Margin="0,0,5,0"/>
-                <Button Grid.Column="2"
-                        Content="Mes"
-                        Command="{Binding CambiarVistaCommand}"
-                        CommandParameter="Mes"
-                        Margin="0,0,10,0"/>
-                <TextBlock Grid.Column="3" 
-                          Text="Filtro: Próximamente"
-                          Opacity="0.6"
-                          VerticalAlignment="Center"
-                          Margin="0,0,10,0"/>
-                <Button Grid.Column="4" Content="🔄 Actualizar" Command="{Binding CargarCitasCommand}"/>
+            <!-- Barra de navegación, vista y filtros -->
+            <Grid Grid.Row="1"
+                  ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto"
+                  Margin="0,0,0,18">
+                
+                <!-- Navegación de fechas -->
+                <StackPanel Grid.Column="0"
+                            Orientation="Horizontal"
+                            Spacing="6"
+                            VerticalAlignment="Center">
+                    <Button Content="◀"
+                            Width="32"
+                            Height="32"
+                            Command="{Binding DiaAnteriorCommand}"/>
+                    <Button Content="Hoy"
+                            Height="32"
+                            Padding="12,0"
+                            Command="{Binding IrAHoyCommand}"/>
+                    <Button Content="▶"
+                            Width="32"
+                            Height="32"
+                            Command="{Binding DiaSiguienteCommand}"/>
+                </StackPanel>
+
+                <!-- Selector de vista (Día / Semana / Mes) -->
+                <StackPanel Grid.Column="1"
+                            Orientation="Horizontal"
+                            Spacing="4"
+                            Margin="20,0,0,0"
+                            VerticalAlignment="Center">
+                    <Button Content="Día"
+                            Command="{Binding CambiarVistaCommand}"
+                            CommandParameter="Dia"
+                            MinWidth="60"
+                            Height="32"/>
+                    <Button Content="Semana"
+                            Command="{Binding CambiarVistaCommand}"
+                            CommandParameter="Semana"
+                            MinWidth="80"
+                            Height="32"/>
+                    <Button Content="Mes"
+                            Command="{Binding CambiarVistaCommand}"
+                            CommandParameter="Mes"
+                            MinWidth="60"
+                            Height="32"/>
+                </StackPanel>
+
+                <!-- Espaciador central -->
+                <Border Grid.Column="2"/>
+
+                <!-- Texto de filtros (placeholder para futuros filtros reales) -->
+                <TextBlock Grid.Column="3"
+                           Text="Filtros (pendiente de configurar)"
+                           Opacity="0.6"
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Right"
+                           Margin="0,0,10,0"/>
+
+                <!-- Botón de actualizar -->
+                <Button Grid.Column="4"
+                        Content="🔄"
+                        Width="36"
+                        Height="32"
+                        Command="{Binding CargarCitasCommand}"
+                        HorizontalAlignment="Right"/>
             </Grid>
             
             <!-- Contenido: nueva vista semanal + lista de día/mes -->
-            <Panel Grid.Row="3">
+            <!-- Envolvemos en ScrollViewer para poder hacer scroll vertical cuando no quepan todas las horas -->
+            <ScrollViewer Grid.Row="2"
+                          VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled">
+                <Panel>
                 <!-- Vista semanal personalizada -->
                 <Grid IsVisible="{Binding MostrarSemana}">
                     <Grid.RowDefinitions>
+                        <!-- Leyenda de colores -->
                         <RowDefinition Height="Auto"/>
+                        <!-- Cabecera de días -->
+                        <RowDefinition Height="Auto"/>
+                        <!-- Rejilla principal -->
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
                     <Grid.ColumnDefinitions>
@@ -108,12 +170,68 @@
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
 
+                    <!-- Leyenda de colores + navegación semanal -->
+                    <Grid Grid.Row="0"
+                          Grid.ColumnSpan="2"
+                          Margin="0,0,0,6">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        
+                        <!-- Leyenda -->
+                        <StackPanel Grid.Column="0"
+                                    Orientation="Horizontal"
+                                    Spacing="10">
+                            <!-- Tatuaje -->
+                            <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                <Border Width="16" Height="8" CornerRadius="4" Background="#10b981"/>
+                                <TextBlock Text="Tatuaje" FontSize="11" Opacity="0.8"/>
+                            </StackPanel>
+                            <!-- Piercing -->
+                            <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                <Border Width="16" Height="8" CornerRadius="4" Background="#3b82f6"/>
+                                <TextBlock Text="Piercing" FontSize="11" Opacity="0.8"/>
+                            </StackPanel>
+                            <!-- Falta consentimiento de trabajo -->
+                            <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                <Border Width="16" Height="8" CornerRadius="4" Background="#f97316"/>
+                                <TextBlock Text="Sin consentimiento de trabajo" FontSize="11" Opacity="0.8"/>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- Navegación de semanas (solo afecta a vista semanal) -->
+                        <StackPanel Grid.Column="1"
+                                    Orientation="Horizontal"
+                                    Spacing="8"
+                                    VerticalAlignment="Center"
+                                    HorizontalAlignment="Right">
+                            <Button Content="Semana anterior"
+                                    Command="{Binding DiaAnteriorCommand}"
+                                    MinWidth="130"
+                                    Height="28"
+                                    FontSize="11"
+                                    Padding="10,0"
+                                    HorizontalContentAlignment="Center"
+                                    VerticalContentAlignment="Center"/>
+                            <Button Content="Semana siguiente"
+                                    Command="{Binding DiaSiguienteCommand}"
+                                    MinWidth="130"
+                                    Height="28"
+                                    FontSize="11"
+                                    Margin="6,0,0,0"
+                                    Padding="10,0"
+                                    HorizontalContentAlignment="Center"
+                                    VerticalContentAlignment="Center"/>
+                        </StackPanel>
+                    </Grid>
+
                     <!-- Cabecera de días -->
-                    <Border Grid.Row="0"
+                    <Border Grid.Row="1"
                             Grid.Column="0"
                             Background="Transparent"/>
 
-                    <ItemsControl Grid.Row="0"
+                    <ItemsControl Grid.Row="1"
                                   Grid.Column="1"
                                   ItemsSource="{Binding DiasSemana}">
                         <ItemsControl.ItemsPanel>
@@ -137,7 +255,7 @@
                     </ItemsControl>
 
                     <!-- Columna de horas -->
-                    <ItemsControl Grid.Row="1"
+                    <ItemsControl Grid.Row="2"
                                   Grid.Column="0"
                                   ItemsSource="{Binding HorasSemana}">
                         <ItemsControl.ItemsPanel>
@@ -161,7 +279,7 @@
                     </ItemsControl>
 
                     <!-- Rejilla de días/horas con Grid fijo para posicionar citas -->
-                    <Border Grid.Row="1"
+                    <Border Grid.Row="2"
                             Grid.Column="1"
                             Background="#020617"
                             CornerRadius="12"
@@ -280,7 +398,8 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
                 </ScrollViewer>
-            </Panel>
+                </Panel>
+            </ScrollViewer>
             
             <!-- Mensaje de error -->
             <Border Grid.Row="4"

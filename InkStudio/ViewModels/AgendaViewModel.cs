@@ -445,13 +445,16 @@ public partial class AgendaViewModel : ViewModelBase
     [RelayCommand]
     private void DiaAnterior()
     {
+        // En vista Día/Mes: mover 1 día. En vista Semana: mover 7 días hacia atrás.
+        var delta = VistaActual == VistaAgenda.Semana ? -7 : -1;
+
         if (FechaSeleccionada.HasValue)
         {
-            FechaSeleccionada = FechaSeleccionada.Value.AddDays(-1);
+            FechaSeleccionada = FechaSeleccionada.Value.AddDays(delta);
         }
         else
         {
-            FechaSeleccionada = DateTimeOffset.Now.Date.AddDays(-1);
+            FechaSeleccionada = DateTimeOffset.Now.Date.AddDays(delta);
         }
         _ = CargarCitas();
     }
@@ -462,13 +465,16 @@ public partial class AgendaViewModel : ViewModelBase
     [RelayCommand]
     private void DiaSiguiente()
     {
+        // En vista Día/Mes: mover 1 día. En vista Semana: mover 7 días hacia adelante.
+        var delta = VistaActual == VistaAgenda.Semana ? 7 : 1;
+
         if (FechaSeleccionada.HasValue)
         {
-            FechaSeleccionada = FechaSeleccionada.Value.AddDays(1);
+            FechaSeleccionada = FechaSeleccionada.Value.AddDays(delta);
         }
         else
         {
-            FechaSeleccionada = DateTimeOffset.Now.Date.AddDays(1);
+            FechaSeleccionada = DateTimeOffset.Now.Date.AddDays(delta);
         }
         _ = CargarCitas();
     }
@@ -546,6 +552,7 @@ public partial class AgendaViewModel : ViewModelBase
             var query = _db.Citas
                 .Include(c => c.Cliente)
                 .Include(c => c.Trabajo)
+                    .ThenInclude(t => t.Consentimiento)
                 .Where(c => c.Fecha >= inicio && c.Fecha < fin);
 
             // Aplicar filtro de estado si existe
@@ -1256,10 +1263,12 @@ public partial class AgendaViewModel : ViewModelBase
                 CitaSeleccionada.Estado = EstadoCita;
                 CitaSeleccionada.Notas = string.IsNullOrWhiteSpace(Notas) ? null : Notas.Trim();
                 
-                // Actualizar vinculación del trabajo
+                // Actualizar vinculación del trabajo:
+                // una cita pertenece (opcionalmente) a un trabajo,
+                // y un trabajo puede tener varias citas.
                 if (TrabajoSeleccionado != null)
                 {
-                    TrabajoSeleccionado.CitaId = CitaSeleccionada.Id;
+                    CitaSeleccionada.TrabajoId = TrabajoSeleccionado.Id;
                 }
 
                 await _db.SaveChangesAsync();
@@ -1288,7 +1297,7 @@ public partial class AgendaViewModel : ViewModelBase
                 // Vincular el trabajo a la cita
                 if (TrabajoSeleccionado != null)
                 {
-                    TrabajoSeleccionado.CitaId = nuevaCita.Id;
+                    nuevaCita.TrabajoId = TrabajoSeleccionado.Id;
                     await _db.SaveChangesAsync();
                 }
                 

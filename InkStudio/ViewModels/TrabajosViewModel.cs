@@ -234,7 +234,7 @@ public partial class TrabajosViewModel : ViewModelBase
 
             var query = _db.Trabajos
                 .Include(t => t.Cliente)
-                .Include(t => t.Cita)
+                .Include(t => t.Citas)
                 .Include(t => t.Consentimiento)
                 .AsQueryable();
 

@@ -117,6 +117,12 @@ public class InkStudioDbContext : DbContext
                   .WithMany(c => c.Citas)
                   .HasForeignKey(e => e.ClienteId)
                   .OnDelete(DeleteBehavior.Cascade);
+
+            // Relación: Trabajo -> Citas (1:N opcional)
+            entity.HasOne(e => e.Trabajo)
+                  .WithMany(t => t.Citas)
+                  .HasForeignKey(e => e.TrabajoId)
+                  .OnDelete(DeleteBehavior.SetNull);
         });
     }
 
@@ -137,11 +143,7 @@ public class InkStudioDbContext : DbContext
                   .HasForeignKey(e => e.ClienteId)
                   .OnDelete(DeleteBehavior.Cascade);
 
-            // Relación: Cita -> Trabajo (1:1 opcional)
-            entity.HasOne(e => e.Cita)
-                  .WithOne(c => c.Trabajo)
-                  .HasForeignKey<Trabajo>(e => e.CitaId)
-                  .OnDelete(DeleteBehavior.SetNull);
+            // La relación Trabajo -> Citas (1:N) se configura desde Cita (ver ConfigurarCita)
         });
     }
 

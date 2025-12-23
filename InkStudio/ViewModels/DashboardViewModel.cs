@@ -218,6 +218,8 @@ public partial class DashboardViewModel : ViewModelBase
             var hoy = DateTime.Today;
             var citas = await _db.Citas
                 .Include(c => c.Cliente)
+                .Include(c => c.Trabajo)
+                    .ThenInclude(t => t.Consentimiento)
                 .Where(c => c.Fecha.Date == hoy)
                 .ToListAsync();
 

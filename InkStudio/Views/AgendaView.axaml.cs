@@ -143,7 +143,9 @@ public partial class AgendaView : UserControl
             canvas.PointerReleased += OnCanvasPointerReleased;
             void ActualizarCitas()
             {
-                if (canvas.Bounds.Width <= 0 || canvas.Bounds.Height <= 0 || vm.CitasSemana.Count == 0)
+                // Si el canvas aún no tiene tamaño válido, no podemos calcular posiciones.
+                // Pero aunque no haya citas en CitasSemana, debemos permitir limpiar las antiguas.
+                if (canvas.Bounds.Width <= 0 || canvas.Bounds.Height <= 0)
                 {
                     return;
                 }
@@ -216,7 +218,7 @@ public partial class AgendaView : UserControl
                         // Crear nuevo Border
                         border = new Border
                         {
-                            Background = GetColorFromEstado(citaInfo.Cita.Estado),
+                            Background = GetColorFromCita(citaInfo.Cita),
                             CornerRadius = new Avalonia.CornerRadius(6),
                             Padding = esCitaPequena ? new Avalonia.Thickness(4, 2) : new Avalonia.Thickness(6, 4),
                             Margin = new Avalonia.Thickness(2, 0),
@@ -294,43 +296,11 @@ public partial class AgendaView : UserControl
                         // Contenido principal
                         Grid.SetRow(stackPanel, 0);
                         gridContenedor.Children.Add(stackPanel);
+
+                        // La barra de consentimiento (si falta) se añade/actualiza siempre más abajo,
+                        // también para Borders ya existentes.
                         
-                        // Badge de superposiciones (si hay más de una cita)
-                        if (citaInfo.TieneSuperposiciones)
-                        {
-                            var badgeSuperposiciones = new Border
-                            {
-                                Background = Avalonia.Media.Brushes.Orange,
-                                CornerRadius = new Avalonia.CornerRadius(10),
-                                Padding = new Avalonia.Thickness(6, 2),
-                                HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right,
-                                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top,
-                                Margin = new Avalonia.Thickness(0, -8, -8, 0),
-                                ZIndex = 100
-                            };
-                            badgeSuperposiciones.Child = new TextBlock
-                            {
-                                Text = citaInfo.NumeroCitasSuperpuestas.ToString(),
-                                FontSize = 10,
-                                FontWeight = Avalonia.Media.FontWeight.Bold,
-                                Foreground = Avalonia.Media.Brushes.White
-                            };
-                            
-                            // Al hacer click en el badge, mostrar el menú
-                            badgeSuperposiciones.Tag = citaInfo; // Guardar la info de superposiciones
-                            badgeSuperposiciones.Cursor = new Avalonia.Input.Cursor(Avalonia.Input.StandardCursorType.Hand);
-                            badgeSuperposiciones.PointerPressed += (s, args) =>
-                            {
-                                if (s is Border badge && badge.Tag is AgendaViewModel.CitaSemanaInfo info)
-                                {
-                                    args.Handled = true; // Evitar que se propague al Border de la cita
-                                    MostrarMenuCitasSuperpuestas(info, args);
-                                }
-                            };
-                            
-                            Grid.SetRow(badgeSuperposiciones, 0);
-                            gridContenedor.Children.Add(badgeSuperposiciones);
-                        }
+                        // Eliminado el badge visual de superposiciones (círculo + número) por no aportar utilidad práctica.
                         
                         // Indicador visual del borde inferior (zona de redimensionado)
                         var indicadorBorde = new Border
@@ -390,63 +360,7 @@ public partial class AgendaView : UserControl
                                 }
                             }
                             
-                            // Actualizar o crear badge de superposiciones
-                            var badgeExistente = gridContenedorExistente.Children
-                                .OfType<Border>()
-                                .FirstOrDefault(b => b.Name == null && b.Child is TextBlock && b.Background == Avalonia.Media.Brushes.Orange);
-                            
-                            if (citaInfo.TieneSuperposiciones)
-                            {
-                                if (badgeExistente == null)
-                                {
-                                    // Crear nuevo badge
-                                    var badgeSuperposiciones = new Border
-                                    {
-                                        Background = Avalonia.Media.Brushes.Orange,
-                                        CornerRadius = new Avalonia.CornerRadius(10),
-                                        Padding = new Avalonia.Thickness(6, 2),
-                                        HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right,
-                                        VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top,
-                                        Margin = new Avalonia.Thickness(0, -8, -8, 0),
-                                        ZIndex = 100
-                                    };
-                                    badgeSuperposiciones.Child = new TextBlock
-                                    {
-                                        Text = citaInfo.NumeroCitasSuperpuestas.ToString(),
-                                        FontSize = 10,
-                                        FontWeight = Avalonia.Media.FontWeight.Bold,
-                                        Foreground = Avalonia.Media.Brushes.White
-                                    };
-                                    
-                                    badgeSuperposiciones.Tag = citaInfo;
-                                    badgeSuperposiciones.Cursor = new Avalonia.Input.Cursor(Avalonia.Input.StandardCursorType.Hand);
-                                    badgeSuperposiciones.PointerPressed += (s, args) =>
-                                    {
-                                        if (s is Border badge && badge.Tag is AgendaViewModel.CitaSemanaInfo info)
-                                        {
-                                            args.Handled = true;
-                                            MostrarMenuCitasSuperpuestas(info, args);
-                                        }
-                                    };
-                                    
-                                    Grid.SetRow(badgeSuperposiciones, 0);
-                                    gridContenedorExistente.Children.Add(badgeSuperposiciones);
-                                }
-                                else
-                                {
-                                    // Actualizar badge existente
-                                    if (badgeExistente.Child is TextBlock badgeText)
-                                    {
-                                        badgeText.Text = citaInfo.NumeroCitasSuperpuestas.ToString();
-                                    }
-                                    badgeExistente.Tag = citaInfo;
-                                }
-                            }
-                            else if (badgeExistente != null)
-                            {
-                                // Eliminar badge si ya no hay superposiciones
-                                gridContenedorExistente.Children.Remove(badgeExistente);
-                            }
+                        // Eliminado el badge de superposiciones (círculo + número) por no aportar utilidad práctica.
                         }
                     }
 
@@ -457,8 +371,42 @@ public partial class AgendaView : UserControl
                     border.Width = width;
                     border.Height = height;
                     
-                    // Actualizar el color de fondo si cambió el estado
-                    border.Background = GetColorFromEstado(citaInfo.Cita.Estado);
+                    // Actualizar el color de fondo según el tipo de cita/trabajo
+                    border.Background = GetColorFromCita(citaInfo.Cita);
+
+                    // Actualizar la barra de falta de consentimiento de trabajo
+                    // (se muestra solo si hay trabajo asociado y NO tiene consentimiento firmado)
+                    if (border.Child is Grid gridContenedorParaConsentimiento)
+                    {
+                        // Buscar una barra existente marcada con Tag específico
+                        var barraExistente = gridContenedorParaConsentimiento.Children
+                            .OfType<Border>()
+                            .FirstOrDefault(b => Equals(b.Tag, "BarraConsentimientoTrabajo"));
+
+                        var trabajo = citaInfo.Cita.Trabajo;
+                        var debeMostrarBarra = trabajo != null && !trabajo.TieneConsentimiento;
+
+                        if (debeMostrarBarra && barraExistente == null)
+                        {
+                            // Crear y añadir la barra si no existía
+                            var nuevaBarra = new Border
+                            {
+                                Background = Avalonia.Media.Brushes.Orange,
+                                Height = 3,
+                                HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch,
+                                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top,
+                                CornerRadius = new Avalonia.CornerRadius(6, 6, 0, 0),
+                                Tag = "BarraConsentimientoTrabajo"
+                            };
+                            Grid.SetRow(nuevaBarra, 0);
+                            gridContenedorParaConsentimiento.Children.Add(nuevaBarra);
+                        }
+                        else if (!debeMostrarBarra && barraExistente != null)
+                        {
+                            // Quitar la barra si ya no hace falta (porque ahora tiene consentimiento o se ha quitado el trabajo)
+                            gridContenedorParaConsentimiento.Children.Remove(barraExistente);
+                        }
+                    }
 
                     Serilog.Log.Debug("🔍 Cita {CitaId} actualizada: Left={Left}, Top={Top}, Width={Width}, Height={Height}, Fila={Fila}, Hora={Hora}, Columna={Columna}, Índice={Indice}, MaxSuperposiciones={Max}", 
                         citaInfo.Cita.Id, left, top, width, height, citaInfo.Fila, citaInfo.Cita.HoraInicio, citaInfo.Columna, citaInfo.IndiceEnGrupo, citaInfo.MaxSuperposicionesSimultaneas);
@@ -539,13 +487,32 @@ public partial class AgendaView : UserControl
     }
 
     /// <summary>
-    /// Obtiene el color de fondo según el estado de la cita usando el converter.
+    /// Obtiene el color de fondo de una cita en la vista semanal.
+    /// - Verde para tatuajes
+    /// - Azul para piercings
+    /// - Otros tipos (consulta, retoque) en morado suave
+    /// Si no hay trabajo asociado, se usa el TipoCita como referencia.
     /// </summary>
-    private Avalonia.Media.IBrush GetColorFromEstado(Models.EstadoCita estado)
+    private Avalonia.Media.IBrush GetColorFromCita(Models.Cita cita)
     {
-        var converter = new EstadoCitaToColorConverter();
-        return converter.Convert(estado, typeof(Avalonia.Media.IBrush), null, null) as Avalonia.Media.IBrush 
-               ?? Avalonia.Media.Brushes.Gray;
+        // Si hay trabajo asociado, usamos el tipo de trabajo
+        if (cita.Trabajo != null)
+        {
+            return cita.Trabajo.Tipo switch
+            {
+                Models.TipoTrabajo.Tatuaje => new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#10b981")), // Verde
+                Models.TipoTrabajo.Piercing => new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#3b82f6")), // Azul
+                _ => new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#6366f1")) // Morado por defecto
+            };
+        }
+
+        // Si no hay trabajo, usamos el tipo de cita como aproximación
+        return cita.TipoCita switch
+        {
+            Models.TipoCita.Tatuaje => new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#10b981")), // Verde
+            Models.TipoCita.Piercing => new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#3b82f6")), // Azul
+            _ => new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#6366f1")) // Morado por defecto
+        };
     }
 
     /// <summary>
@@ -676,7 +643,7 @@ public partial class AgendaView : UserControl
         // Crear indicador fantasma (sombra) que muestra dónde se colocará la cita
         _indicadorFantasma = new Border
         {
-            Background = GetColorFromEstado(cita.Estado),
+            Background = GetColorFromCita(cita),
             CornerRadius = new Avalonia.CornerRadius(6),
             Opacity = 0.3,
             BorderBrush = Avalonia.Media.Brushes.White,
