@@ -1,6 +1,6 @@
 ﻿using Avalonia;
-using InkStudio.Services;
 using InkStudio.Data;
+using InkStudio.Services;
 using Microsoft.EntityFrameworkCore;
 using System;
 
@@ -31,10 +31,13 @@ sealed class Program
             {
                 using var db = new InkStudioDbContext();
                 db.Database.Migrate();
+
+                // Asegurar también la estructura base de ficheros (%LOCALAPPDATA%\InkStudio\ficheros\)
+                ConsentimientoPathService.ObtenerRutaBaseFicheros();
             }
             catch (Exception exDb)
             {
-                Serilog.Log.Fatal(exDb, "Error al aplicar migraciones de base de datos al iniciar la aplicación");
+                Serilog.Log.Fatal(exDb, "Error al inicializar la base de datos o la estructura de ficheros al iniciar la aplicación");
                 throw;
             }
 

@@ -170,7 +170,7 @@ public partial class DashboardViewModel : ViewModelBase
     /// Acción rápida: navegar a Agenda y abrir el modal de nueva cita.
     /// </summary>
     [RelayCommand]
-    private async Task NuevaCitaRapida()
+    private void NuevaCitaRapida()
     {
         if (_mainWindowViewModel == null) return;
 
@@ -185,7 +185,7 @@ public partial class DashboardViewModel : ViewModelBase
     /// Acción rápida: navegar a Trabajos y abrir el modal de nuevo trabajo.
     /// </summary>
     [RelayCommand]
-    private async Task NuevoTrabajoRapido()
+    private void NuevoTrabajoRapido()
     {
         if (_mainWindowViewModel == null) return;
 
