@@ -28,6 +28,11 @@ public partial class DashboardViewModel : ViewModelBase
     /// </summary>
     private readonly InkStudioDbContext _db = new();
 
+    /// <summary>
+    /// Referencia al ViewModel principal para poder navegar y abrir formularios desde el Dashboard.
+    /// </summary>
+    private MainWindowViewModel? _mainWindowViewModel;
+
     #endregion
 
     #region Propiedades - Citas del Día
@@ -110,6 +115,15 @@ public partial class DashboardViewModel : ViewModelBase
         ActualizarSaludo();
     }
 
+    /// <summary>
+    /// Permite inyectar el MainWindowViewModel para navegación y acciones rápidas.
+    /// </summary>
+    /// <param name="mainWindowViewModel">Instancia principal.</param>
+    public void SetMainWindowViewModel(MainWindowViewModel mainWindowViewModel)
+    {
+        _mainWindowViewModel = mainWindowViewModel;
+    }
+
     #endregion
 
     #region Comandos
@@ -135,6 +149,51 @@ public partial class DashboardViewModel : ViewModelBase
             Log.Error(ex, "Error al cargar datos del Dashboard");
             throw;
         }
+    }
+
+    /// <summary>
+    /// Acción rápida: navegar a Clientes y abrir el modal de nuevo cliente.
+    /// </summary>
+    [RelayCommand]
+    private async Task NuevoClienteRapido()
+    {
+        if (_mainWindowViewModel == null) return;
+
+        // Navegar primero a Clientes
+        await _mainWindowViewModel.IrAClientesCommand.ExecuteAsync(null);
+
+        // Abrir el formulario de nuevo cliente
+        _mainWindowViewModel.ClientesVM.NuevoClienteCommand.Execute(null);
+    }
+
+    /// <summary>
+    /// Acción rápida: navegar a Agenda y abrir el modal de nueva cita.
+    /// </summary>
+    [RelayCommand]
+    private async Task NuevaCitaRapida()
+    {
+        if (_mainWindowViewModel == null) return;
+
+        // Navegar a Agenda
+        _mainWindowViewModel.IrAAgendaCommand.Execute(null);
+
+        // Abrir formulario de nueva cita
+        _mainWindowViewModel.AgendaVM.NuevaCitaCommand.Execute(null);
+    }
+
+    /// <summary>
+    /// Acción rápida: navegar a Trabajos y abrir el modal de nuevo trabajo.
+    /// </summary>
+    [RelayCommand]
+    private async Task NuevoTrabajoRapido()
+    {
+        if (_mainWindowViewModel == null) return;
+
+        // Navegar a Trabajos
+        _mainWindowViewModel.IrATrabajosCommand.Execute(null);
+
+        // Abrir formulario de nuevo trabajo
+        _mainWindowViewModel.TrabajosVM.NuevoTrabajoCommand.Execute(null);
     }
 
     /// <summary>

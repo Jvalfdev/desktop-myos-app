@@ -46,6 +46,7 @@ public partial class MainWindowViewModel : ViewModelBase
         // Establecer referencias cruzadas para comunicación entre ViewModels
         AgendaVM.SetTrabajosViewModel(TrabajosVM);
         AgendaVM.SetMainWindowViewModel(this);
+        DashboardVM.SetMainWindowViewModel(this);
         TrabajosVM.SetClientesViewModel(ClientesVM);
     }
 

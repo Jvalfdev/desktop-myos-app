@@ -52,7 +52,7 @@
     </UserControl.Styles>
 
     <ScrollViewer>
-        <Grid RowDefinitions="Auto,Auto,*,Auto" Margin="30">
+        <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" Margin="30">
             
             <!-- ═══════════════════════════════════════════════════════════ -->
             <!-- FILA 0: CABECERA                                            -->
@@ -76,9 +76,30 @@
             </Grid>
 
             <!-- ═══════════════════════════════════════════════════════════ -->
-            <!-- FILA 1: TARJETAS DE ESTADÍSTICAS                            -->
+            <!-- FILA 1: ACCIONES RÁPIDAS                                    -->
             <!-- ═══════════════════════════════════════════════════════════ -->
-            <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="15" Margin="0,0,0,25">
+            <StackPanel Grid.Row="1"
+                        Orientation="Horizontal"
+                        Spacing="12"
+                        Margin="0,0,0,25">
+                <Button Classes="quick-action"
+                        Content="➕ Nuevo cliente"
+                        Command="{Binding NuevoClienteRapidoCommand}"
+                        MinWidth="170"/>
+                <Button Classes="quick-action"
+                        Content="➕ Nueva cita"
+                        Command="{Binding NuevaCitaRapidaCommand}"
+                        MinWidth="170"/>
+                <Button Classes="quick-action"
+                        Content="➕ Nuevo trabajo"
+                        Command="{Binding NuevoTrabajoRapidoCommand}"
+                        MinWidth="170"/>
+            </StackPanel>
+
+            <!-- ═══════════════════════════════════════════════════════════ -->
+            <!-- FILA 2: TARJETAS DE ESTADÍSTICAS                            -->
+            <!-- ═══════════════════════════════════════════════════════════ -->
+            <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="15" Margin="0,0,0,25">
                 
                 <!-- Total Clientes -->
                 <Border Classes="stat-card">
@@ -147,9 +168,9 @@
             </StackPanel>
 
             <!-- ═══════════════════════════════════════════════════════════ -->
-            <!-- FILA 2: CONTENIDO PRINCIPAL (Citas + Alertas)               -->
+            <!-- FILA 3: CONTENIDO PRINCIPAL (Citas + Alertas)               -->
             <!-- ═══════════════════════════════════════════════════════════ -->
-            <Grid Grid.Row="2" ColumnDefinitions="2*,*" Margin="0,0,0,25">
+            <Grid Grid.Row="3" ColumnDefinitions="2*,*" Margin="0,0,0,25">
                 
                 <!-- Citas de Hoy -->
                 <Border Classes="content-card" Grid.Column="0" Margin="0,0,15,0">
@@ -260,30 +281,6 @@
                 
             </Grid>
 
-            <!-- ═══════════════════════════════════════════════════════════ -->
-            <!-- FILA 3: ACCIONES RÁPIDAS                                    -->
-            <!-- ═══════════════════════════════════════════════════════════ -->
-            <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="15">
-                <Button Classes="quick-action">
-                    <StackPanel Orientation="Horizontal" Spacing="10">
-                        <TextBlock Text="👤" FontSize="20"/>
-                        <TextBlock Text="Nuevo cliente" VerticalAlignment="Center"/>
-                    </StackPanel>
-                </Button>
-                <Button Classes="quick-action">
-                    <StackPanel Orientation="Horizontal" Spacing="10">
-                        <TextBlock Text="📅" FontSize="20"/>
-                        <TextBlock Text="Nueva cita" VerticalAlignment="Center"/>
-                    </StackPanel>
-                </Button>
-                <Button Classes="quick-action">
-                    <StackPanel Orientation="Horizontal" Spacing="10">
-                        <TextBlock Text="🎨" FontSize="20"/>
-                        <TextBlock Text="Registrar trabajo" VerticalAlignment="Center"/>
-                    </StackPanel>
-                </Button>
-            </StackPanel>
-            
         </Grid>
     </ScrollViewer>
 
