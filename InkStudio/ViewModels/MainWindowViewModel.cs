@@ -44,6 +44,11 @@ public partial class MainWindowViewModel : ViewModelBase
     public ConsentimientosViewModel ConsentimientosVM { get; } = new();
 
     /// <summary>
+    /// ViewModel de configuración de la aplicación.
+    /// </summary>
+    public ConfiguracionViewModel ConfiguracionVM { get; } = new();
+
+    /// <summary>
     /// Constructor que inicializa las referencias entre ViewModels.
     /// </summary>
     public MainWindowViewModel()

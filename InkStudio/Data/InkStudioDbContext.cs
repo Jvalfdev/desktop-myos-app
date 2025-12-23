@@ -178,11 +178,13 @@ public class InkStudioDbContext : DbContext
     /// <param name="modelBuilder">Builder del modelo.</param>
     private static void ConfigurarDatosIniciales(ModelBuilder modelBuilder)
     {
-        // Configuración inicial del estudio
+        // Configuración inicial del estudio (instalación para Estudio Erzulie)
         modelBuilder.Entity<Configuracion>().HasData(new Configuracion
         {
             Id = 1,
-            NombreEstudio = "InkStudio",
+            NombreEstudio = "Estudio Erzulie",
+            Direccion = "Calle Núñez de Reinoso, Guadalajara",
+            // El CIF se incluirá en los documentos legales usando esta dirección o texto adicional
             TemaOscuro = true,
             IdiomaApp = "es"
         });

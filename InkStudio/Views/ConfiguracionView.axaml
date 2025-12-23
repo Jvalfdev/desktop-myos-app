@@ -1,0 +1,157 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:InkStudio.ViewModels"
+             x:Class="InkStudio.Views.ConfiguracionView"
+             x:DataType="vm:ConfiguracionViewModel">
+
+  <Grid RowDefinitions="Auto,*" Margin="30">
+
+    <!-- Cabecera -->
+    <StackPanel Grid.Row="0" Margin="0,0,0,20">
+      <TextBlock Text="⚙️ Configuración"
+                 FontSize="28"
+                 FontWeight="Bold"/>
+      <TextBlock Text="Datos del estudio y configuración de correo (SMTP)"
+                 Opacity="0.6"
+                 Margin="0,4,0,0"/>
+    </StackPanel>
+
+    <!-- Contenido -->
+    <ScrollViewer Grid.Row="1"
+                  VerticalScrollBarVisibility="Auto">
+      <StackPanel Spacing="24">
+
+        <!-- Datos del estudio -->
+        <Border Background="#111827"
+                CornerRadius="12"
+                Padding="20">
+          <StackPanel Spacing="12">
+            <TextBlock Text="🏢 Datos del estudio"
+                       FontSize="18"
+                       FontWeight="Bold"
+                       Margin="0,0,0,8"/>
+
+            <StackPanel>
+              <TextBlock Text="Nombre del estudio *" Opacity="0.7" Margin="0,0,0,5"/>
+              <TextBox Text="{Binding NombreEstudio}" Width="300"/>
+            </StackPanel>
+
+            <StackPanel>
+              <TextBlock Text="Dirección" Opacity="0.7" Margin="0,8,0,5"/>
+              <TextBox Text="{Binding Direccion}" Width="400"/>
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" Spacing="20">
+              <StackPanel Width="200">
+                <TextBlock Text="Teléfono" Opacity="0.7" Margin="0,8,0,5"/>
+                <TextBox Text="{Binding Telefono}"/>
+              </StackPanel>
+              <StackPanel Width="260">
+                <TextBlock Text="Email de contacto" Opacity="0.7" Margin="0,8,0,5"/>
+                <TextBox Text="{Binding Email}"/>
+              </StackPanel>
+            </StackPanel>
+          </StackPanel>
+        </Border>
+
+        <!-- SMTP -->
+        <Border Background="#111827"
+                CornerRadius="12"
+                Padding="20">
+          <StackPanel Spacing="12">
+            <TextBlock Text="📧 Configuración SMTP"
+                       FontSize="18"
+                       FontWeight="Bold"
+                       Margin="0,0,0,8"/>
+
+            <StackPanel Orientation="Horizontal" Spacing="20">
+              <StackPanel Width="260">
+                <TextBlock Text="Servidor SMTP" Opacity="0.7" Margin="0,0,0,5"/>
+                <TextBox Text="{Binding SmtpServidor}"/>
+              </StackPanel>
+              <StackPanel Width="120">
+                <TextBlock Text="Puerto" Opacity="0.7" Margin="0,0,0,5"/>
+                <NumericUpDown Value="{Binding SmtpPuerto}"
+                               Minimum="1"
+                               Maximum="65535"
+                               Height="30"/>
+              </StackPanel>
+              <StackPanel VerticalAlignment="Bottom">
+                <CheckBox Content="Usar SSL/TLS"
+                          IsChecked="{Binding SmtpUsarSsl}"/>
+              </StackPanel>
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" Spacing="20">
+              <StackPanel Width="260">
+                <TextBlock Text="Usuario" Opacity="0.7" Margin="0,8,0,5"/>
+                <TextBox Text="{Binding SmtpUsuario}"/>
+              </StackPanel>
+              <StackPanel Width="260">
+                <TextBlock Text="Contraseña" Opacity="0.7" Margin="0,8,0,5"/>
+                <TextBox Text="{Binding SmtpPassword}"
+                         PasswordChar="●"/>
+              </StackPanel>
+            </StackPanel>
+
+            <TextBlock Text="Nota: la contraseña se almacena en texto plano por ahora (entorno de desarrollo)."
+                       FontSize="11"
+                       Opacity="0.5"
+                       Margin="0,8,0,0"/>
+          </StackPanel>
+        </Border>
+
+        <!-- Preferencias -->
+        <Border Background="#111827"
+                CornerRadius="12"
+                Padding="20">
+          <StackPanel Spacing="12">
+            <TextBlock Text="🎨 Preferencias de la aplicación"
+                       FontSize="18"
+                       FontWeight="Bold"
+                       Margin="0,0,0,8"/>
+
+            <StackPanel Orientation="Horizontal" Spacing="20">
+              <CheckBox Content="Usar tema oscuro"
+                        IsChecked="{Binding TemaOscuro}"/>
+              <StackPanel>
+                <TextBlock Text="Idioma (código)" Opacity="0.7" Margin="0,0,0,5"/>
+                <TextBox Text="{Binding IdiomaApp}" Width="80"/>
+              </StackPanel>
+            </StackPanel>
+          </StackPanel>
+        </Border>
+
+        <!-- Mensajes y guardar -->
+        <StackPanel Spacing="8">
+          <Border IsVisible="{Binding MensajeError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                  Background="#3d2a2a"
+                  CornerRadius="6"
+                  Padding="10">
+            <TextBlock Text="{Binding MensajeError}" Foreground="#ef5350"/>
+          </Border>
+          <Border IsVisible="{Binding MensajeOk, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                  Background="#1b4332"
+                  CornerRadius="6"
+                  Padding="10">
+            <TextBlock Text="{Binding MensajeOk}" Foreground="#a7f3d0"/>
+          </Border>
+
+          <Button Content="💾 Guardar configuración"
+                  Classes="btn-primary"
+                  Command="{Binding GuardarConfiguracionCommand}"
+                  HorizontalAlignment="Right"
+                  Width="220"
+                  Height="40"
+                  HorizontalContentAlignment="Center"
+                  VerticalContentAlignment="Center"/>
+        </StackPanel>
+
+      </StackPanel>
+    </ScrollViewer>
+
+  </Grid>
+
+</UserControl>
+
+
