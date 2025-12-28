@@ -9,7 +9,10 @@
 <body>
   <div class="container">
     <h1>📸 Foto del trabajo</h1>
-    <p>Permite acceso a la cámara, encuadra la zona y pulsa en "Tomar foto".</p>
+    <p>
+      Cuando el navegador te lo pida, pulsa <strong>"Permitir"</strong> para usar la cámara.
+      Si no ves el mensaje, toca el candado de la barra de direcciones y habilita la cámara.
+    </p>
 
     <div class="camera-container">
       <video id="video" autoplay playsinline></video>
@@ -17,7 +20,13 @@
     </div>
 
     <div class="buttons">
-      <button id="btnCapture">Tomar foto</button>
+      <button id="btnCapture" class="btn btn-primary">Tomar foto</button>
+      <button id="btnUpload" class="btn btn-secondary">📁 O subir desde galería</button>
+      <!-- Input file: visible pero muy pequeño para que funcione en móviles -->
+      <input type="file"
+             id="fileInput"
+             accept="image/*"
+             style="position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; z-index: -1;" />
     </div>
 
     <p id="status"></p>

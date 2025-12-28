@@ -1,6 +1,8 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             x:Class="InkStudio.Views.FotoTrabajoView">
+             xmlns:vm="clr-namespace:InkStudio.ViewModels"
+             x:Class="InkStudio.Views.FotoTrabajoView"
+             x:DataType="vm:FotoTrabajoViewModel">
   <Grid IsVisible="{Binding EsVisible}"
         Background="#80000000">
     <Border Width="620"

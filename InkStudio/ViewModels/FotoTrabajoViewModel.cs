@@ -8,6 +8,7 @@ using InkStudio.Data;
 using InkStudio.Models;
 using InkStudio.Services;
 using Serilog;
+using Microsoft.EntityFrameworkCore;
 
 namespace InkStudio.ViewModels;
 
@@ -175,63 +176,107 @@ public partial class FotoTrabajoViewModel : ViewModelBase
     private async Task EsperarFotoAsync()
     {
         if (string.IsNullOrEmpty(_tokenActual) || _trabajo == null)
+        {
+            Log.Warning("EsperarFotoAsync: Token o trabajo es null. Token: {Token}, Trabajo: {TrabajoId}", 
+                _tokenActual, _trabajo?.Id);
             return;
+        }
+
+        Log.Information("Esperando foto para token: {Token}, Trabajo: {TrabajoId}, EsAntes: {EsAntes}", 
+            _tokenActual, _trabajo.Id, _esAntes);
 
         try
         {
             var imagenBase64 = await _firmaWebService.EsperarFirma(_tokenActual, TimeSpan.FromMinutes(5));
             if (string.IsNullOrEmpty(imagenBase64))
             {
-                Log.Warning("No se recibió imagen para el token de foto o expiró el tiempo");
+                Log.Warning("No se recibió imagen para el token de foto {Token} o expiró el tiempo", _tokenActual);
+                EstadoConexion = "⏱️ Tiempo de espera agotado. Intenta de nuevo.";
                 return;
             }
+
+            Log.Information("Foto recibida para token {Token}, tamaño base64: {Tamaño} caracteres", 
+                _tokenActual, imagenBase64.Length);
 
             EstadoConexion = "📥 Recibiendo foto...";
 
             // Decodificar y guardar JPEG
-            var bytes = Convert.FromBase64String(imagenBase64);
+            byte[] bytes;
+            try
+            {
+                bytes = Convert.FromBase64String(imagenBase64);
+                Log.Information("Imagen decodificada correctamente, tamaño: {Tamaño} bytes", bytes.Length);
+            }
+            catch (FormatException ex)
+            {
+                Log.Error(ex, "Error al decodificar base64. Primeros 100 caracteres: {Preview}", 
+                    imagenBase64.Length > 100 ? imagenBase64.Substring(0, 100) : imagenBase64);
+                MensajeError = "Error: El formato de la imagen no es válido. Intenta con otra foto.";
+                EstadoConexion = "❌ Error al procesar la imagen";
+                return;
+            }
+
             var ruta = _esAntes
                 ? ConsentimientoPathService.ObtenerRutaFotoAntes(_trabajo.ClienteId, _trabajo.Id)
                 : ConsentimientoPathService.ObtenerRutaFotoDespues(_trabajo.ClienteId, _trabajo.Id);
 
-            Directory.CreateDirectory(Path.GetDirectoryName(ruta)!);
+            Log.Information("Guardando foto en: {Ruta}", ruta);
+
+            var directorio = Path.GetDirectoryName(ruta);
+            if (!string.IsNullOrEmpty(directorio))
+            {
+                Directory.CreateDirectory(directorio);
+            }
+
             await File.WriteAllBytesAsync(ruta, bytes);
+            Log.Information("Foto guardada en disco: {Ruta}, {Tamaño} bytes", ruta, bytes.Length);
 
             // Actualizar trabajo en BD
             var trabajoDb = await _db.Trabajos.FirstOrDefaultAsync(t => t.Id == _trabajo.Id);
-            if (trabajoDb != null)
+            if (trabajoDb == null)
             {
-                if (_esAntes)
-                {
-                    trabajoDb.FotoAntesPath = ruta;
-                }
-                else
-                {
-                    trabajoDb.FotoDespuesPath = ruta;
-                }
-
-                await _db.SaveChangesAsync();
-
-                // Refrescar instancia local
-                if (_esAntes)
-                {
-                    _trabajo.FotoAntesPath = ruta;
-                    PreviewFotoAntes = CargarBitmapDesdeRuta(ruta);
-                }
-                else
-                {
-                    _trabajo.FotoDespuesPath = ruta;
-                    PreviewFotoDespues = CargarBitmapDesdeRuta(ruta);
-                }
-
-                Log.Information("Foto de trabajo guardada en {Ruta}", ruta);
-                EstadoConexion = "✅ Foto recibida y guardada correctamente";
+                Log.Error("No se encontró el trabajo {TrabajoId} en la base de datos", _trabajo.Id);
+                MensajeError = "Error: No se encontró el trabajo en la base de datos.";
+                EstadoConexion = "❌ Error al actualizar el trabajo";
+                return;
             }
+
+            if (_esAntes)
+            {
+                trabajoDb.FotoAntesPath = ruta;
+            }
+            else
+            {
+                trabajoDb.FotoDespuesPath = ruta;
+            }
+
+            await _db.SaveChangesAsync();
+            Log.Information("Trabajo actualizado en BD con ruta de foto: {Ruta}", ruta);
+
+            // Refrescar instancia local y UI
+            if (_esAntes)
+            {
+                _trabajo.FotoAntesPath = ruta;
+                PreviewFotoAntes = CargarBitmapDesdeRuta(ruta);
+                OnPropertyChanged(nameof(PreviewFotoAntes));
+            }
+            else
+            {
+                _trabajo.FotoDespuesPath = ruta;
+                PreviewFotoDespues = CargarBitmapDesdeRuta(ruta);
+                OnPropertyChanged(nameof(PreviewFotoDespues));
+            }
+
+            Log.Information("✅ Foto de trabajo guardada correctamente en {Ruta}", ruta);
+            EstadoConexion = "✅ Foto recibida y guardada correctamente";
+            MensajeError = string.Empty; // Limpiar errores previos
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Error al recibir/guardar foto de trabajo");
+            Log.Error(ex, "Error al recibir/guardar foto de trabajo. Token: {Token}, Trabajo: {TrabajoId}", 
+                _tokenActual, _trabajo?.Id);
             MensajeError = $"Error al guardar la foto: {ex.Message}";
+            EstadoConexion = "❌ Error al guardar la foto";
         }
     }
 

@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.EntityFrameworkCore;
@@ -196,6 +197,18 @@ public partial class TrabajosViewModel : ViewModelBase
     [ObservableProperty]
     private string? _notas;
 
+    /// <summary>
+    /// Imagen de la foto "antes" del trabajo (para preview en la UI).
+    /// </summary>
+    [ObservableProperty]
+    private Bitmap? _fotoAntesImagen;
+
+    /// <summary>
+    /// Imagen de la foto "después" del trabajo (para preview en la UI).
+    /// </summary>
+    [ObservableProperty]
+    private Bitmap? _fotoDespuesImagen;
+
     #endregion
 
     #region Propiedades - Estado
@@ -302,7 +315,6 @@ public partial class TrabajosViewModel : ViewModelBase
         try
         {
             var lista = await _db.Clientes
-                .Where(c => c.Activo)
                 .OrderBy(c => c.Nombre)
                 .ThenBy(c => c.Apellidos)
                 .ToListAsync();
@@ -661,9 +673,20 @@ public partial class TrabajosViewModel : ViewModelBase
             if (FotoTrabajoVM == null)
             {
                 FotoTrabajoVM = new FotoTrabajoViewModel(_db);
+                // Suscribirse al evento de foto guardada para refrescar las imágenes en la UI
+                // Nota: FotoTrabajoViewModel no tiene evento, así que refrescamos después de cerrar el modal
             }
 
             await FotoTrabajoVM.AbrirModalAsync(trabajoFoto, esAntes);
+            
+            // Refrescar las fotos después de cerrar el modal (cuando el usuario vuelve)
+            // Esperamos un poco para que el modal se cierre completamente
+            await Task.Delay(500);
+            
+            if (EsEdicion && TrabajoSeleccionado != null && TrabajoSeleccionado.Id == trabajoFoto.Id)
+            {
+                await RefrescarFotosTrabajoAsync();
+            }
         }
         catch (Exception ex)
         {
@@ -1021,8 +1044,119 @@ public partial class TrabajosViewModel : ViewModelBase
         Notas = trabajo.Notas;
         MensajeError = string.Empty;
         
+        // Cargar imágenes de las fotos si existen
+        CargarFotosTrabajo(trabajo);
+        
         // Notificar cambios en las propiedades del trabajo para actualizar la UI
         OnPropertyChanged(nameof(TrabajoSeleccionado));
+    }
+
+    /// <summary>
+    /// Carga las imágenes de las fotos del trabajo para mostrarlas en la UI.
+    /// </summary>
+    private void CargarFotosTrabajo(Trabajo trabajo)
+    {
+        FotoAntesImagen = CargarBitmapDesdeRuta(trabajo.FotoAntesPath);
+        FotoDespuesImagen = CargarBitmapDesdeRuta(trabajo.FotoDespuesPath);
+    }
+
+    /// <summary>
+    /// Refresca las fotos del trabajo seleccionado desde la base de datos.
+    /// </summary>
+    private async Task RefrescarFotosTrabajoAsync()
+    {
+        if (TrabajoSeleccionado == null) return;
+
+        try
+        {
+            await _db.Entry(TrabajoSeleccionado).ReloadAsync();
+            CargarFotosTrabajo(TrabajoSeleccionado);
+            Log.Debug("Fotos del trabajo {TrabajoId} refrescadas", TrabajoSeleccionado.Id);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error al refrescar fotos del trabajo {TrabajoId}", TrabajoSeleccionado.Id);
+        }
+    }
+
+    /// <summary>
+    /// Carga un Bitmap desde una ruta de archivo.
+    /// </summary>
+    private static Bitmap? CargarBitmapDesdeRuta(string? ruta)
+    {
+        if (string.IsNullOrWhiteSpace(ruta) || !File.Exists(ruta))
+            return null;
+
+        try
+        {
+            using var stream = File.OpenRead(ruta);
+            return new Bitmap(stream);
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Error al cargar bitmap desde ruta: {Ruta}", ruta);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Abre la foto "antes" en el visor de imágenes del sistema.
+    /// </summary>
+    [RelayCommand]
+    private Task VerFotoAntes(Trabajo? trabajo)
+    {
+        var trabajoAVer = trabajo ?? TrabajoSeleccionado;
+        if (trabajoAVer == null || string.IsNullOrWhiteSpace(trabajoAVer.FotoAntesPath))
+            return Task.CompletedTask;
+
+        try
+        {
+            if (File.Exists(trabajoAVer.FotoAntesPath))
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = trabajoAVer.FotoAntesPath,
+                    UseShellExecute = true
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error al abrir foto antes");
+            MensajeError = $"Error al abrir la foto: {ex.Message}";
+        }
+
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Abre la foto "después" en el visor de imágenes del sistema.
+    /// </summary>
+    [RelayCommand]
+    private Task VerFotoDespues(Trabajo? trabajo)
+    {
+        var trabajoAVer = trabajo ?? TrabajoSeleccionado;
+        if (trabajoAVer == null || string.IsNullOrWhiteSpace(trabajoAVer.FotoDespuesPath))
+            return Task.CompletedTask;
+
+        try
+        {
+            if (File.Exists(trabajoAVer.FotoDespuesPath))
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = trabajoAVer.FotoDespuesPath,
+                    UseShellExecute = true
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error al abrir foto después");
+            MensajeError = $"Error al abrir la foto: {ex.Message}";
+        }
+
+        return Task.CompletedTask;
     }
 
     #endregion

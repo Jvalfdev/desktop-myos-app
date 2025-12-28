@@ -1081,7 +1081,6 @@ public partial class AgendaViewModel : ViewModelBase
         try
         {
             var lista = await _db.Clientes
-                .Where(c => c.Activo)
                 .OrderBy(c => c.Nombre)
                 .ThenBy(c => c.Apellidos)
                 .ToListAsync();

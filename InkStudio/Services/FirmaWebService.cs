@@ -347,18 +347,29 @@ public class FirmaWebService : IDisposable
 
         while (DateTime.Now - inicio < tiempoEspera)
         {
-            // Verificar si el token expiró
-            if (!_tokensActivos.ContainsKey(token))
-            {
-                Log.Warning("Token expirado o inválido: {Token}", token);
-                return null;
-            }
-
-            // Verificar si ya se recibió la firma
+            // PRIMERO verificar si ya se recibió la firma (puede que se haya recibido antes de esta verificación)
             if (_firmasRecibidas.TryGetValue(token, out var firma))
             {
-                Log.Information("Firma recibida para token: {Token}", token);
+                Log.Information("Firma/foto recibida para token: {Token}, tamaño base64: {Tamaño} caracteres", 
+                    token, firma.ImagenBase64?.Length ?? 0);
                 return firma.ImagenBase64;
+            }
+
+            // LUEGO verificar si el token expiró (pero solo si no hay firma recibida)
+            if (!_tokensActivos.ContainsKey(token))
+            {
+                // Si el token no está activo pero tampoco hay firma recibida, puede que haya expirado
+                // Pero esperamos un poco más por si acaso la firma está llegando
+                await Task.Delay(1000);
+                // Verificar una vez más después de esperar
+                if (_firmasRecibidas.TryGetValue(token, out var firmaRetrasada))
+                {
+                    Log.Information("Firma/foto recibida para token: {Token} (con retraso), tamaño base64: {Tamaño} caracteres", 
+                        token, firmaRetrasada.ImagenBase64?.Length ?? 0);
+                    return firmaRetrasada.ImagenBase64;
+                }
+                Log.Warning("Token expirado o inválido: {Token}", token);
+                return null;
             }
 
             await Task.Delay(500); // Esperar 500ms antes de verificar de nuevo
@@ -620,6 +631,62 @@ public class FirmaWebService : IDisposable
     }
 
     /// <summary>
+    /// Sirve la página HTML de captura de foto.
+    /// </summary>
+    private async Task ServirPaginaFoto(HttpListenerContext context, string token)
+    {
+        var response = context.Response;
+        var request = context.Request;
+
+        // Verificar que el token es válido
+        if (!_tokensActivos.ContainsKey(token))
+        {
+            response.StatusCode = 404;
+            response.Close();
+            return;
+        }
+
+        try
+        {
+            var rutaWwwRoot = ConsentimientoPathService.ObtenerRutaWwwRoot();
+            var rutaHtml = Path.Combine(rutaWwwRoot, "photo.html");
+
+            if (!File.Exists(rutaHtml))
+            {
+                Log.Warning("Archivo HTML de foto no encontrado: {Ruta}", rutaHtml);
+                response.StatusCode = 404;
+                response.Close();
+                return;
+            }
+
+            var html = await File.ReadAllTextAsync(rutaHtml);
+
+            // Agregar headers CORS y de caché
+            response.Headers.Add("Access-Control-Allow-Origin", "*");
+            response.Headers.Add("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+            response.Headers.Add("Access-Control-Allow-Headers", "Content-Type");
+            response.Headers.Add("Cache-Control", "no-cache, no-store, must-revalidate");
+            response.Headers.Add("Pragma", "no-cache");
+            response.Headers.Add("Expires", "0");
+
+            response.ContentType = "text/html; charset=utf-8";
+            response.StatusCode = 200;
+
+            var bytes = Encoding.UTF8.GetBytes(html);
+            await response.OutputStream.WriteAsync(bytes);
+            response.Close();
+
+            Log.Information("Página HTML de foto servida para token: {Token} desde IP: {IP}", token, request.RemoteEndPoint?.Address);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error al servir página HTML de foto");
+            response.StatusCode = 500;
+            response.Close();
+        }
+    }
+
+    /// <summary>
     /// Sirve un archivo estático (CSS, JS, etc.).
     /// </summary>
     private async Task ServirArchivoEstatico(HttpListenerContext context, string nombreArchivo, string contentType)
@@ -713,7 +780,8 @@ public class FirmaWebService : IDisposable
                 ImagenBase64 = imagenBase64
             });
 
-            Log.Information("Firma recibida para token: {Token}", token);
+            Log.Information("Firma/foto recibida para token: {Token}, tamaño base64: {Tamaño} caracteres", 
+                token, imagenBase64?.Length ?? 0);
 
             // Responder con éxito
             response.StatusCode = 200;
