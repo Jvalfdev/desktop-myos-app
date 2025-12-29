@@ -16,6 +16,8 @@
         <converters:BoolToCursorConverter x:Key="BoolToCursorConverter"/>
         <converters:BoolToWeekendBackgroundConverter x:Key="BoolToWeekendBackgroundConverter"/>
         <converters:BoolToWeekendForegroundConverter x:Key="BoolToWeekendForegroundConverter"/>
+        <converters:IsNotNullConverter x:Key="IsNotNullConverter"/>
+        <converters:IsNullConverter x:Key="IsNullConverter"/>
 
         <!-- Paleta base oscura moderna (morado / naranja) -->
         <SolidColorBrush x:Key="AppBackgroundBrush" Color="#020617"/>

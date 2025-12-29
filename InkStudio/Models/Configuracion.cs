@@ -97,6 +97,47 @@ public class Configuracion
 
     #endregion
 
+    #region Configuración de Backup
+
+    /// <summary>
+    /// Servicio de nube configurado para backups.
+    /// </summary>
+    public ServicioNube? BackupServicioNube { get; set; }
+
+    /// <summary>
+    /// Ruta de la carpeta de nube para backups.
+    /// </summary>
+    public string? BackupRutaNube { get; set; }
+
+    /// <summary>
+    /// Indica si copiar automáticamente los backups a la nube.
+    /// </summary>
+    public bool BackupCopiarAutomaticamenteNube { get; set; } = true;
+
+    /// <summary>
+    /// Indica si el backup automático está activado.
+    /// </summary>
+    public bool BackupAutomaticoActivo { get; set; } = false;
+
+    /// <summary>
+    /// Frecuencia del backup automático.
+    /// 0 = Diario, 1 = Semanal, 2 = Mensual
+    /// </summary>
+    public int BackupFrecuencia { get; set; } = 0; // Diario por defecto
+
+    /// <summary>
+    /// Hora del día para el backup automático (en minutos desde medianoche).
+    /// Por defecto: 14:00 (840 minutos).
+    /// </summary>
+    public int BackupHora { get; set; } = 840; // 14:00
+
+    /// <summary>
+    /// Número de backups a mantener (los más antiguos se eliminan).
+    /// </summary>
+    public int BackupMantenerUltimos { get; set; } = 10;
+
+    #endregion
+
     #region Propiedades Calculadas
 
     /// <summary>

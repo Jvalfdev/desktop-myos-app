@@ -49,6 +49,11 @@ public partial class MainWindowViewModel : ViewModelBase
     public ConfiguracionViewModel ConfiguracionVM { get; } = new();
 
     /// <summary>
+    /// ViewModel de backup y restauración.
+    /// </summary>
+    public BackupViewModel BackupVM { get; } = new();
+
+    /// <summary>
     /// Constructor que inicializa las referencias entre ViewModels.
     /// </summary>
     public MainWindowViewModel()
@@ -144,6 +149,18 @@ public partial class MainWindowViewModel : ViewModelBase
     private void IrALogs()
     {
         VistaActual = "Logs";
+    }
+
+    /// <summary>
+    /// Navega a la vista de Backup y Restauración.
+    /// </summary>
+    [RelayCommand]
+    private async Task IrABackup()
+    {
+        VistaActual = "Backup";
+        // Cargar servicios de nube y backups al entrar
+        await BackupVM.CargarServiciosNubeCommand.ExecuteAsync(null);
+        await BackupVM.ActualizarListaBackupsCommand.ExecuteAsync(null);
     }
 
     /// <summary>

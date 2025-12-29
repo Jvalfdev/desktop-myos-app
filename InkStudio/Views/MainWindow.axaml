@@ -110,6 +110,13 @@
                         </StackPanel>
                     </Button>
                     <Button Classes="nav-btn" 
+                            Command="{Binding IrABackupCommand}">
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <TextBlock Text="💾" FontSize="18"/>
+                            <TextBlock Text="Backup" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Classes="nav-btn" 
                             Command="{Binding IrALogsCommand}"
                             ToolTip.Tip="Ver logs del sistema para diagnóstico">
                         <StackPanel Orientation="Horizontal" Spacing="12">
@@ -165,6 +172,10 @@
                 <!-- Configuración -->
                 <views:ConfiguracionView DataContext="{Binding ConfiguracionVM}"
                                          IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).VistaActual, Converter={StaticResource EqualConverter}, ConverterParameter=Configuracion}"/>
+
+                <!-- Backup -->
+                <views:BackupView DataContext="{Binding BackupVM}"
+                                  IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).VistaActual, Converter={StaticResource EqualConverter}, ConverterParameter=Backup}"/>
             </Panel>
         </Border>
         
