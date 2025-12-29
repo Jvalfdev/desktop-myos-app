@@ -12,7 +12,7 @@
             Background="#020617"
             CornerRadius="18"
             Padding="24">
-      <Grid RowDefinitions="Auto,* ,Auto">
+      <Grid RowDefinitions="Auto,*,Auto,Auto">
         <!-- Cabecera -->
         <Grid Grid.Row="0"
               ColumnDefinitions="*,Auto"
@@ -120,6 +120,22 @@
                      Foreground="#ef5350"
                      TextWrapping="Wrap"/>
         </Border>
+
+        <!-- Botón Cancelar -->
+        <StackPanel Grid.Row="3"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    Spacing="12"
+                    Margin="0,16,0,0">
+          <Button Content="Cancelar"
+                  Classes="btn-secondary"
+                  Command="{Binding CerrarCommand}"
+                  MinWidth="120"
+                  Height="40"
+                  Padding="16,0"
+                  HorizontalContentAlignment="Center"
+                  VerticalContentAlignment="Center"/>
+        </StackPanel>
       </Grid>
     </Border>
   </Grid>

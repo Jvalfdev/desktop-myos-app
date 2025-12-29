@@ -674,19 +674,17 @@ public partial class TrabajosViewModel : ViewModelBase
             {
                 FotoTrabajoVM = new FotoTrabajoViewModel(_db);
                 // Suscribirse al evento de foto guardada para refrescar las imágenes en la UI
-                // Nota: FotoTrabajoViewModel no tiene evento, así que refrescamos después de cerrar el modal
+                FotoTrabajoVM.FotoGuardada += async (s, trabajoActualizado) =>
+                {
+                    // Refrescar las fotos cuando se guarda una nueva
+                    if (EsEdicion && TrabajoSeleccionado != null && TrabajoSeleccionado.Id == trabajoActualizado.Id)
+                    {
+                        await RefrescarFotosTrabajoAsync();
+                    }
+                };
             }
 
             await FotoTrabajoVM.AbrirModalAsync(trabajoFoto, esAntes);
-            
-            // Refrescar las fotos después de cerrar el modal (cuando el usuario vuelve)
-            // Esperamos un poco para que el modal se cierre completamente
-            await Task.Delay(500);
-            
-            if (EsEdicion && TrabajoSeleccionado != null && TrabajoSeleccionado.Id == trabajoFoto.Id)
-            {
-                await RefrescarFotosTrabajoAsync();
-            }
         }
         catch (Exception ex)
         {

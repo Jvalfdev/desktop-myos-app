@@ -24,6 +24,11 @@ public partial class FotoTrabajoViewModel : ViewModelBase
     private Trabajo? _trabajo;
     private bool _esAntes;
 
+    /// <summary>
+    /// Evento que se dispara cuando se guarda una foto exitosamente.
+    /// </summary>
+    public event EventHandler<Trabajo>? FotoGuardada;
+
     public FotoTrabajoViewModel(InkStudioDbContext dbContext)
     {
         _db = dbContext;
@@ -270,6 +275,13 @@ public partial class FotoTrabajoViewModel : ViewModelBase
             Log.Information("✅ Foto de trabajo guardada correctamente en {Ruta}", ruta);
             EstadoConexion = "✅ Foto recibida y guardada correctamente";
             MensajeError = string.Empty; // Limpiar errores previos
+
+            // Disparar evento para notificar que se guardó la foto
+            FotoGuardada?.Invoke(this, trabajoDb);
+
+            // Cerrar el modal automáticamente después de un breve delay para que el usuario vea el mensaje de éxito
+            await Task.Delay(1500);
+            Cerrar();
         }
         catch (Exception ex)
         {
