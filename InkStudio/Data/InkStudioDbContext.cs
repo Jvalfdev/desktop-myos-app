@@ -92,11 +92,14 @@ public class InkStudioDbContext : DbContext
     {
         modelBuilder.Entity<Cliente>(entity =>
         {
-            // Teléfono único
-            entity.HasIndex(e => e.Telefono).IsUnique();
+            // DNI único (obligatorio)
+            entity.HasIndex(e => e.Dni).IsUnique()
+                .HasFilter("[Dni] IS NOT NULL"); // Solo aplicar unicidad si DNI no es null
 
             // Índice para búsquedas por nombre
             entity.HasIndex(e => new { e.Nombre, e.Apellidos });
+            
+            // Teléfono NO es único (puede haber múltiples clientes con el mismo teléfono)
         });
     }
 

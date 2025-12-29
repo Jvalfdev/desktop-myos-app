@@ -1,6 +1,7 @@
 using System;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -547,7 +548,7 @@ public partial class ClientesViewModel : ViewModelBase
     {
         try
         {
-            // Validación básica
+            // Validación básica: solo Nombre, Apellidos y DNI son obligatorios
             if (string.IsNullOrWhiteSpace(Nombre))
             {
                 MensajeError = "El nombre es obligatorio";
@@ -566,6 +567,22 @@ public partial class ClientesViewModel : ViewModelBase
                 return;
             }
 
+            // Verificar que el DNI no esté duplicado (solo para nuevos clientes o si cambió el DNI)
+            var dniTrimmed = Dni.Trim();
+            var clienteIdActual = EsEdicion && ClienteSeleccionado != null ? ClienteSeleccionado.Id : 0;
+            
+            if (!EsEdicion || (EsEdicion && ClienteSeleccionado != null && ClienteSeleccionado.Dni != dniTrimmed))
+            {
+                var dniDuplicado = await _db.Clientes
+                    .AnyAsync(c => c.Dni == dniTrimmed && c.Id != clienteIdActual);
+                
+                if (dniDuplicado)
+                {
+                    MensajeError = "Ya existe un cliente con ese DNI.";
+                    return;
+                }
+            }
+
             // Teléfono y email son opcionales; no se valida unicidad de teléfono.
 
             Cargando = true;
@@ -573,16 +590,20 @@ public partial class ClientesViewModel : ViewModelBase
 
             Cliente clienteGuardado;
 
+            // Capitalizar nombre y apellidos (primera letra en mayúscula)
+            var nombreCapitalizado = CapitalizarTexto(Nombre.Trim());
+            var apellidosCapitalizados = CapitalizarTexto(Apellidos?.Trim() ?? string.Empty);
+
             if (EsEdicion && ClienteSeleccionado != null)
             {
                 // Actualizar cliente existente
                 Log.Information("Actualizando cliente ID: {ClienteId}, Nombre: {Nombre}, FechaNacimiento: {FechaNacimiento}", 
                     ClienteSeleccionado.Id, Nombre, FechaNacimiento);
-                ClienteSeleccionado.Nombre = Nombre.Trim();
-                ClienteSeleccionado.Apellidos = Apellidos.Trim();
-                ClienteSeleccionado.Telefono = Telefono.Trim();
+                ClienteSeleccionado.Nombre = nombreCapitalizado;
+                ClienteSeleccionado.Apellidos = apellidosCapitalizados;
+                ClienteSeleccionado.Telefono = string.IsNullOrWhiteSpace(Telefono) ? string.Empty : Telefono.Trim();
                 ClienteSeleccionado.Email = string.IsNullOrWhiteSpace(Email) ? null : Email.Trim();
-                ClienteSeleccionado.Dni = string.IsNullOrWhiteSpace(Dni) ? null : Dni.Trim();
+                ClienteSeleccionado.Dni = Dni.Trim(); // DNI es obligatorio, no puede ser null
                 ClienteSeleccionado.FechaNacimiento = FechaNacimiento?.DateTime;
                 ClienteSeleccionado.Alergias = string.IsNullOrWhiteSpace(Alergias) ? null : Alergias.Trim();
                 ClienteSeleccionado.Notas = string.IsNullOrWhiteSpace(Notas) ? null : Notas.Trim();
@@ -592,14 +613,14 @@ public partial class ClientesViewModel : ViewModelBase
             {
                 // Crear nuevo cliente
                 Log.Information("Creando nuevo cliente: {Nombre} {Apellidos}, Tel: {Telefono}", 
-                    Nombre, Apellidos, Telefono);
+                    Nombre, Apellidos ?? string.Empty, Telefono ?? string.Empty);
                 var nuevoCliente = new Cliente
                 {
-                    Nombre = Nombre.Trim(),
-                    Apellidos = Apellidos.Trim(),
-                    Telefono = Telefono.Trim(),
+                    Nombre = nombreCapitalizado,
+                    Apellidos = apellidosCapitalizados,
+                    Telefono = string.IsNullOrWhiteSpace(Telefono) ? string.Empty : Telefono.Trim(),
                     Email = string.IsNullOrWhiteSpace(Email) ? null : Email.Trim(),
-                    Dni = string.IsNullOrWhiteSpace(Dni) ? null : Dni.Trim(),
+                    Dni = Dni.Trim(), // DNI es obligatorio, no puede ser null
                     FechaNacimiento = FechaNacimiento?.DateTime,
                     Alergias = string.IsNullOrWhiteSpace(Alergias) ? null : Alergias.Trim(),
                     Notas = string.IsNullOrWhiteSpace(Notas) ? null : Notas.Trim(),
@@ -692,16 +713,35 @@ public partial class ClientesViewModel : ViewModelBase
         catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("UNIQUE") == true || 
                                             ex.Message.Contains("UNIQUE") == true)
         {
-            Log.Warning("Intento de crear cliente con clave única duplicada. Teléfono: {Telefono}, DNI: {Dni}. Error: {Error}", 
-                Telefono, Dni, ex.Message);
+            Log.Warning("Intento de crear cliente con clave única duplicada. DNI: {Dni}. Error: {Error}", 
+                Dni, ex.Message);
 
-            if (!string.IsNullOrWhiteSpace(Dni))
+            // Verificar específicamente si es el DNI el que está duplicado
+            var dniTrimmed = Dni?.Trim();
+            var clienteIdActual = 0;
+            if (EsEdicion && ClienteSeleccionado != null)
             {
-                MensajeError = "Ya existe un cliente con ese DNI.";
+                clienteIdActual = ClienteSeleccionado.Id;
+            }
+            
+            if (!string.IsNullOrWhiteSpace(dniTrimmed))
+            {
+                var dniTrimmedValue = dniTrimmed; // Variable local para evitar problema con expresión lambda
+                var dniDuplicado = await _db.Clientes
+                    .AnyAsync(c => c.Dni == dniTrimmedValue && c.Id != clienteIdActual);
+                
+                if (dniDuplicado)
+                {
+                    MensajeError = "Ya existe un cliente con ese DNI.";
+                }
+                else
+                {
+                    MensajeError = "Error al guardar: conflicto con datos únicos.";
+                }
             }
             else
             {
-                MensajeError = "Ya existe un registro con alguno de los datos únicos introducidos.";
+                MensajeError = "Error al guardar: conflicto con datos únicos.";
             }
         }
         catch (Exception ex)
@@ -1335,6 +1375,28 @@ public partial class ClientesViewModel : ViewModelBase
         Alergias = cliente.Alergias ?? string.Empty;
         Notas = cliente.Notas ?? string.Empty;
         MensajeError = string.Empty;
+    }
+
+    #endregion
+
+    #region Métodos Auxiliares
+
+    /// <summary>
+    /// Capitaliza un texto: primera letra de cada palabra en mayúscula, resto en minúscula.
+    /// Ejemplo: "juan pérez garcía" -> "Juan Pérez García"
+    /// </summary>
+    private static string CapitalizarTexto(string texto)
+    {
+        if (string.IsNullOrWhiteSpace(texto))
+        {
+            return string.Empty;
+        }
+
+        var cultureInfo = CultureInfo.CurrentCulture;
+        var textInfo = cultureInfo.TextInfo;
+        
+        // Usar ToTitleCase para capitalizar cada palabra
+        return textInfo.ToTitleCase(texto.ToLower(cultureInfo));
     }
 
     #endregion

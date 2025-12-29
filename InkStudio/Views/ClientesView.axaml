@@ -213,16 +213,16 @@
                                      Watermark="Nombre"/>
 
                             <!-- Apellidos -->
-                            <TextBlock Text="Apellidos" Opacity="0.7" Margin="16,16,0,5"/>
+                            <TextBlock Text="Apellidos *" Opacity="0.7" Margin="16,16,0,5"/>
                             <TextBox Classes="form-field"
                                      Text="{Binding Apellidos}"
-                                     Watermark="Apellidos"/>
+                                     Watermark="Apellidos (obligatorio)"/>
 
                             <!-- Teléfono -->
-                            <TextBlock Text="Teléfono *" Opacity="0.7" Margin="16,16,0,5"/>
+                            <TextBlock Text="Teléfono" Opacity="0.7" Margin="16,16,0,5"/>
                             <TextBox Classes="form-field"
                                      Text="{Binding Telefono}"
-                                     Watermark="612 345 678"/>
+                                     Watermark="612 345 678 (opcional)"/>
 
                             <!-- Email -->
                             <TextBlock Text="Email" Opacity="0.7" Margin="16,16,0,5"/>
@@ -231,10 +231,10 @@
                                      Watermark="cliente@email.com"/>
 
                             <!-- DNI -->
-                            <TextBlock Text="DNI" Opacity="0.7" Margin="16,16,0,5"/>
+                            <TextBlock Text="DNI *" Opacity="0.7" Margin="16,16,0,5"/>
                             <TextBox Classes="form-field"
                                      Text="{Binding Dni}"
-                                     Watermark="12345678A"/>
+                                     Watermark="12345678A (obligatorio)"/>
 
                             <!-- Fecha nacimiento -->
                             <TextBlock Text="Fecha de nacimiento (DD/MM/YYYY)" Opacity="0.7" Margin="16,16,0,5"/>
