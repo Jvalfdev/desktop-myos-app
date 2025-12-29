@@ -3,31 +3,26 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Foto del trabajo</title>
+  <title>Añadir foto del trabajo</title>
   <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
   <div class="container">
-    <h1>📸 Foto del trabajo</h1>
+    <h1>📸 Añadir foto del trabajo</h1>
     <p>
-      Cuando el navegador te lo pida, pulsa <strong>"Permitir"</strong> para usar la cámara.
-      Si no ves el mensaje, toca el candado de la barra de direcciones y habilita la cámara.
+      Selecciona una foto desde tu galería o toma una nueva con la cámara de tu móvil.
     </p>
 
-    <div class="camera-container">
-      <video id="video" autoplay playsinline></video>
-      <canvas id="canvas" style="display:none;"></canvas>
-    </div>
-
     <div class="buttons">
-      <button id="btnCapture" class="btn btn-primary">Tomar foto</button>
-      <button id="btnUpload" class="btn btn-secondary">📁 O subir desde galería</button>
+      <button id="btnUpload" class="btn btn-primary">📁 Seleccionar foto</button>
       <!-- Input file: visible pero muy pequeño para que funcione en móviles -->
       <input type="file"
              id="fileInput"
              accept="image/*"
              style="position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; z-index: -1;" />
     </div>
+
+    <canvas id="canvas" style="display:none;"></canvas>
 
     <p id="status"></p>
   </div>

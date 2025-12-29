@@ -528,7 +528,7 @@
                                             
                                             <!-- Botones para foto ANTES -->
                                             <StackPanel Orientation="Horizontal" Spacing="8">
-                                                <Button Content="📸 Tomar"
+                                                <Button Content="➕ Añadir"
                                                         Classes="btn-secondary"
                                                         Command="{Binding TomarFotoAntesCommand}"
                                                         CommandParameter="{Binding TrabajoSeleccionado}"
@@ -582,7 +582,7 @@
                                             
                                             <!-- Botones para foto DESPUÉS -->
                                             <StackPanel Orientation="Horizontal" Spacing="8">
-                                                <Button Content="📸 Tomar"
+                                                <Button Content="➕ Añadir"
                                                         Classes="btn-secondary"
                                                         Command="{Binding TomarFotoDespuesCommand}"
                                                         CommandParameter="{Binding TrabajoSeleccionado}"

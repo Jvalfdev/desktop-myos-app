@@ -75,7 +75,7 @@ public partial class FotoTrabajoViewModel : ViewModelBase
             _trabajo = trabajo;
             _esAntes = esAntes;
 
-            TituloModal = esAntes ? "📸 Foto ANTES del trabajo" : "📸 Foto DESPUÉS del trabajo";
+            TituloModal = esAntes ? "➕ Añadir foto ANTES del trabajo" : "➕ Añadir foto DESPUÉS del trabajo";
             MensajeError = string.Empty;
             EstadoConexion = "⏳ Preparando captura...";
 

@@ -1,58 +1,15 @@
-const video = document.getElementById('video');
 const canvas = document.getElementById('canvas');
-const btnCapture = document.getElementById('btnCapture');
 const btnUpload = document.getElementById('btnUpload');
 const fileInput = document.getElementById('fileInput');
 const statusText = document.getElementById('status');
-
-let stream = null;
 
 // Debug: Log para ver qué está pasando
 console.log('photo.js cargado');
 console.log('fileInput:', fileInput);
 console.log('btnUpload:', btnUpload);
 
-async function initCamera() {
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    statusText.textContent = '❌ Este navegador no permite usar la cámara desde esta conexión.\n\n' +
-      'Prueba con otro navegador (Chrome/Firefox) o revisa los permisos de la cámara en los ajustes del navegador.';
-    return;
-  }
-
-  try {
-    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
-    video.srcObject = stream;
-    statusText.textContent = 'Cámara lista. Encadra y pulsa en "Tomar foto".';
-  } catch (err) {
-    console.error('Error al acceder a la cámara', err);
-
-    const ua = navigator.userAgent || '';
-    const esIOS = /iPhone|iPad|iPod/i.test(ua);
-    const esSafari = /Safari/i.test(ua) && !/Chrome/i.test(ua);
-    const esContextoSeguro = window.isSecureContext;
-
-    if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-      if (esIOS && esSafari && !esContextoSeguro) {
-        statusText.textContent = '❌ Safari en iPhone/iPad solo permite usar la cámara en páginas seguras (https o localhost).\n\n' +
-          'Esta página se está cargando desde una IP local (http), por lo que Safari bloquea la cámara aunque hayas dado permisos.\n\n' +
-          '💡 Solución: Usa el botón "📁 O subir desde galería" para seleccionar una foto que ya hayas tomado con la cámara del móvil.';
-      } else {
-        statusText.textContent = '❌ No se ha dado permiso a la cámara.\n\n' +
-          '💡 Solución rápida: Usa el botón "📁 O subir desde galería" para seleccionar una foto que ya hayas tomado.\n\n' +
-          'Si quieres usar la cámara directamente, pulsa en el candado o icono de la barra de direcciones del navegador y permite el acceso a la cámara para esta página. Luego recarga la página.\n\n' +
-          '(Error: ' + err.name + ')';
-      }
-    } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-      statusText.textContent = '❌ No se ha encontrado ninguna cámara en este dispositivo.\n\n' +
-        '💡 Solución: Usa el botón "📁 O subir desde galería" para seleccionar una foto que ya hayas tomado.\n\n' +
-        '(Error: ' + err.name + ')';
-    } else {
-      statusText.textContent = '❌ No se pudo acceder a la cámara.\n\n' +
-        '💡 Solución: Usa el botón "📁 O subir desde galería" para seleccionar una foto que ya hayas tomado con la cámara del móvil.\n\n' +
-        'Detalle técnico: ' + err.name + ' - ' + (err.message || 'sin mensaje adicional');
-    }
-  }
-}
+// Mensaje inicial
+statusText.textContent = 'Pulsa en "📁 Seleccionar foto" para elegir una imagen desde tu galería o cámara.';
 
 function getTokenFromUrl() {
   const parts = window.location.pathname.split('/');
@@ -78,9 +35,6 @@ async function sendPhoto(dataUrl) {
 
     if (response.ok) {
       statusText.textContent = '✅ Foto enviada correctamente. Ya puedes volver a la app.';
-      if (stream) {
-        stream.getTracks().forEach(t => t.stop());
-      }
     } else {
       statusText.textContent = '❌ Error al enviar la foto.';
     }
@@ -89,25 +43,6 @@ async function sendPhoto(dataUrl) {
     statusText.textContent = '❌ Error al enviar la foto.';
   }
 }
-
-btnCapture.addEventListener('click', () => {
-  if (!video.videoWidth || !video.videoHeight) {
-    statusText.textContent = '⏳ Espera a que la cámara esté lista.';
-    return;
-  }
-
-  const width = video.videoWidth;
-  const height = video.videoHeight;
-
-  canvas.width = width;
-  canvas.height = height;
-
-  const ctx = canvas.getContext('2d');
-  ctx.drawImage(video, 0, 0, width, height);
-
-  const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
-  sendPhoto(dataUrl);
-});
 
 // Botón para abrir galería - múltiples métodos para máxima compatibilidad
 btnUpload.addEventListener('click', (e) => {
@@ -177,7 +112,5 @@ fileInput.addEventListener('change', (e) => {
   
   reader.readAsDataURL(file);
 });
-
-initCamera();
 
 
