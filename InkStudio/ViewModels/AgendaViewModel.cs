@@ -28,6 +28,7 @@ public partial class AgendaViewModel : ViewModelBase
         public DateTime Fecha { get; set; }
         public string Etiqueta { get; set; } = string.Empty; // Ej: "Lun 17"
         public bool EsHoy { get; set; }
+        public bool EsFinDeSemana => Fecha.DayOfWeek == DayOfWeek.Saturday || Fecha.DayOfWeek == DayOfWeek.Sunday;
     }
 
     /// <summary>
@@ -178,6 +179,12 @@ public partial class AgendaViewModel : ViewModelBase
     /// </summary>
     [ObservableProperty]
     private ObservableCollection<HoraSemanaSlot> _horasSemana = new();
+
+    /// <summary>
+    /// Mes y año actual de la semana mostrada (ej: "Enero 2024").
+    /// </summary>
+    [ObservableProperty]
+    private string _mesAnioActual = string.Empty;
 
     /// <summary>
     /// Lista de citas para el período seleccionado.
@@ -652,6 +659,10 @@ public partial class AgendaViewModel : ViewModelBase
                 EsHoraCompleta = hora.Minutes == 0
             });
         }
+
+        // Actualizar el mes y año actual (usar el día del medio de la semana para evitar confusión)
+        var diaMedio = inicioSemana.AddDays(3); // Miércoles
+        MesAnioActual = diaMedio.ToString("MMMM yyyy", System.Globalization.CultureInfo.GetCultureInfo("es-ES"));
 
         // Recalcular posiciones de citas después de actualizar la semana
         CalcularPosicionesCitas();

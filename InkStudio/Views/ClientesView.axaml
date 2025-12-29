@@ -272,14 +272,31 @@
                                    PlacementTarget="{Binding #FechaNacimientoTextBox}"
                                    Placement="Bottom"
                                    IsLightDismissEnabled="True"
-                                   Width="300">
+                                   Width="320">
                                 <Border Background="#1e1e2e"
                                         CornerRadius="8"
-                                        Padding="10"
+                                        Padding="0"
                                         BorderBrush="#374151"
                                         BorderThickness="1">
-                                    <DatePicker SelectedDate="{Binding FechaNacimiento}"
-                                                 HorizontalAlignment="Stretch"/>
+                                    <StackPanel>
+                                        <!-- Header con mes y año -->
+                                        <Border Background="#111827"
+                                                CornerRadius="8,8,0,0"
+                                                Padding="16,12">
+                                            <TextBlock Name="MesAnioHeader"
+                                                       FontSize="16"
+                                                       FontWeight="Bold"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center"
+                                                       Foreground="White"/>
+                                        </Border>
+                                        <!-- DatePicker -->
+                                        <DatePicker SelectedDate="{Binding FechaNacimiento}"
+                                                     HorizontalAlignment="Stretch"
+                                                     Padding="10"
+                                                     Name="FechaNacimientoDatePicker"
+                                                     SelectedDateChanged="OnFechaNacimientoSelectedDateChanged"/>
+                                    </StackPanel>
                                 </Border>
                             </Popup>
 

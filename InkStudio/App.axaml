@@ -14,6 +14,8 @@
         <converters:EstadoCitaToColorConverter x:Key="EstadoCitaToColorConverter"/>
         <converters:BoolToTextConverter x:Key="BoolToTextConverter"/>
         <converters:BoolToCursorConverter x:Key="BoolToCursorConverter"/>
+        <converters:BoolToWeekendBackgroundConverter x:Key="BoolToWeekendBackgroundConverter"/>
+        <converters:BoolToWeekendForegroundConverter x:Key="BoolToWeekendForegroundConverter"/>
 
         <!-- Paleta base oscura moderna (morado / naranja) -->
         <SolidColorBrush x:Key="AppBackgroundBrush" Color="#020617"/>
@@ -283,6 +285,35 @@
 
         <Style Selector="Button.quick-action:pressed">
             <Setter Property="Background" Value="#374151"/>
+        </Style>
+
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <!-- ESTILOS PARA DATEPICKER - FINES DE SEMANA                       -->
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        
+        <!-- Estilo para días de fin de semana (sábado y domingo) en el DatePicker -->
+        <!-- Usamos clases CSS para identificar fines de semana -->
+        <Style Selector="CalendarDayButton.weekend">
+            <Setter Property="Background" Value="#2d3748"/>
+            <Setter Property="Foreground" Value="#cbd5e1"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+        
+        <!-- Hover en fines de semana -->
+        <Style Selector="CalendarDayButton.weekend:pointerover">
+            <Setter Property="Background" Value="#475569"/>
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+        
+        <!-- Día seleccionado en fin de semana -->
+        <Style Selector="CalendarDayButton.weekend.selected">
+            <Setter Property="Background" Value="#3b82f6"/>
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+        
+        <!-- Estilos para días de otros meses (más tenues) -->
+        <Style Selector="CalendarDayButton.other-month">
+            <Setter Property="Opacity" Value="0.4"/>
         </Style>
     </Application.Styles>
     

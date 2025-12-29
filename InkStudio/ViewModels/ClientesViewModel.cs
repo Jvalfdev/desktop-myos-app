@@ -157,6 +157,18 @@ public partial class ClientesViewModel : ViewModelBase
                         fecha = fecha.AddYears(1900);
                 }
 
+                // Validar año bisiesto: si el día es 29 y el mes es febrero, verificar que el año sea bisiesto
+                if (fecha.Day == 29 && fecha.Month == 2)
+                {
+                    if (!DateTime.IsLeapYear(fecha.Year))
+                    {
+                        // Año no bisiesto con 29 de febrero: mostrar error pero no bloquear
+                        Log.Warning("Fecha inválida: 29 de febrero en año no bisiesto ({Año})", fecha.Year);
+                        MensajeError = $"⚠️ El año {fecha.Year} no es bisiesto. El 29 de febrero no existe en ese año.";
+                        return; // No actualizar la fecha
+                    }
+                }
+
                 var nuevaFecha = new DateTimeOffset(fecha);
                 // Solo actualizar si es diferente para evitar bucles
                 if (!FechaNacimiento.HasValue || FechaNacimiento.Value.Date != nuevaFecha.Date)
@@ -164,6 +176,7 @@ public partial class ClientesViewModel : ViewModelBase
                     _actualizandoFechaDesdeTexto = true;
                     FechaNacimiento = nuevaFecha;
                     _actualizandoFechaDesdeTexto = false;
+                    MensajeError = string.Empty; // Limpiar error si la fecha es válida
                 }
                 return;
             }
@@ -173,12 +186,25 @@ public partial class ClientesViewModel : ViewModelBase
         if (DateTime.TryParse(value.Trim(), System.Globalization.CultureInfo.InvariantCulture,
             System.Globalization.DateTimeStyles.None, out var fechaFlexible))
         {
+            // Validar año bisiesto: si el día es 29 y el mes es febrero, verificar que el año sea bisiesto
+            if (fechaFlexible.Day == 29 && fechaFlexible.Month == 2)
+            {
+                if (!DateTime.IsLeapYear(fechaFlexible.Year))
+                {
+                    // Año no bisiesto con 29 de febrero: mostrar error pero no bloquear
+                    Log.Warning("Fecha inválida: 29 de febrero en año no bisiesto ({Año})", fechaFlexible.Year);
+                    MensajeError = $"⚠️ El año {fechaFlexible.Year} no es bisiesto. El 29 de febrero no existe en ese año.";
+                    return; // No actualizar la fecha
+                }
+            }
+
             var nuevaFecha = new DateTimeOffset(fechaFlexible);
             if (!FechaNacimiento.HasValue || FechaNacimiento.Value.Date != nuevaFecha.Date)
             {
                 _actualizandoFechaDesdeTexto = true;
                 FechaNacimiento = nuevaFecha;
                 _actualizandoFechaDesdeTexto = false;
+                MensajeError = string.Empty; // Limpiar error si la fecha es válida
             }
         }
         // Si no se puede parsear, no actualizamos FechaNacimiento (permitimos texto parcial mientras se escribe)
