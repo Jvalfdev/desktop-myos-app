@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:InkStudio.ViewModels"
         xmlns:views="using:InkStudio.Views"
+        xmlns:converters="using:InkStudio.Converters"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="700"
@@ -146,8 +147,16 @@
                                   IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).VistaActual, Converter={StaticResource EqualConverter}, ConverterParameter=Agenda}"/>
                 
                 <!-- Trabajos -->
+                <!-- Se muestra cuando estamos en la vista de Trabajos O cuando el modal está abierto (overlay) -->
                 <views:TrabajosView DataContext="{Binding TrabajosVM}"
-                                     IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).VistaActual, Converter={StaticResource EqualConverter}, ConverterParameter=Trabajos}"/>
+                                     ZIndex="10">
+                    <views:TrabajosView.IsVisible>
+                        <MultiBinding Converter="{StaticResource OrConverter}">
+                            <Binding Path="$parent[Window].((vm:MainWindowViewModel)DataContext).VistaActual" Converter="{StaticResource EqualConverter}" ConverterParameter="Trabajos"/>
+                            <Binding Path="$parent[Window].((vm:MainWindowViewModel)DataContext).TrabajosVM.MostrarFormulario"/>
+                        </MultiBinding>
+                    </views:TrabajosView.IsVisible>
+                </views:TrabajosView>
 
                 <!-- Consentimientos -->
                 <views:ConsentimientosView DataContext="{Binding ConsentimientosVM}"

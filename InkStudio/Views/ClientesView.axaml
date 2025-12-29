@@ -286,6 +286,17 @@
                                            Foreground="#ef5350"
                                            TextWrapping="Wrap"/>
                             </Border>
+
+                            <!-- Espaciador final para indicar el final del contenido -->
+                            <Border Height="60"
+                                    Background="Transparent"
+                                    Margin="0,24,0,0">
+                                <Border Height="1"
+                                        Background="#1f2937"
+                                        Opacity="0.3"
+                                        VerticalAlignment="Top"
+                                        Margin="0,20,0,0"/>
+                            </Border>
                         </StackPanel>
                     </ScrollViewer>
 
@@ -353,13 +364,14 @@
                 Padding="40">
             <!-- Modal centrado con glow suave (altura completa para permitir scroll interno) -->
             <Border HorizontalAlignment="Center"
-                    VerticalAlignment="Stretch"
+                    VerticalAlignment="Top"
                     MinWidth="700"
                     MaxWidth="900"
+                    Margin="0,40,0,40"
                     Background="#020617"
                     CornerRadius="18"
                     BoxShadow="0 0 80 0 #50d946ef, 0 0 120 0 #40ec4899">
-                <Grid RowDefinitions="Auto,*,Auto">
+                <Grid RowDefinitions="Auto,*,Auto" MinHeight="600" MaxHeight="1200">
                     <!-- Cabecera del modal -->
                     <Border Grid.Row="0"
                             Background="#111827"
@@ -401,8 +413,8 @@
 
                     <!-- Contenido scrollable -->
                     <ScrollViewer Grid.Row="1"
-                                  Padding="28,24,40,24"
-                                  VerticalScrollBarVisibility="Visible"
+                                  Padding="28,24,28,24"
+                                  VerticalScrollBarVisibility="Auto"
                                   HorizontalScrollBarVisibility="Disabled">
                         <StackPanel Spacing="24" Margin="0,0,0,40">
                             
@@ -585,7 +597,15 @@
                                                 <Border Background="#1a1a2e"
                                                         CornerRadius="8"
                                                         Padding="16"
-                                                        Margin="0,0,0,12">
+                                                        Margin="0,0,0,12"
+                                                        Cursor="Hand"
+                                                        Classes="hover-border"
+                                                        PointerPressed="OnTrabajoClick">
+                                                    <Border.Styles>
+                                                        <Style Selector="Border.hover-border:pointerover">
+                                                            <Setter Property="Background" Value="#252547"/>
+                                                        </Style>
+                                                    </Border.Styles>
                                                     <Grid ColumnDefinitions="Auto,*,Auto">
                                                         <TextBlock Grid.Column="0"
                                                                    Text="{Binding IconoTipo}"
@@ -623,6 +643,17 @@
                                            HorizontalAlignment="Center"
                                            Margin="0,8,0,0"/>
                             </StackPanel>
+
+                            <!-- Espaciador final para indicar el final del contenido -->
+                            <Border Height="60"
+                                    Background="Transparent"
+                                    Margin="0,24,0,0">
+                                <Border Height="1"
+                                        Background="#1f2937"
+                                        Opacity="0.3"
+                                        VerticalAlignment="Top"
+                                        Margin="0,20,0,0"/>
+                            </Border>
 
                         </StackPanel>
                     </ScrollViewer>

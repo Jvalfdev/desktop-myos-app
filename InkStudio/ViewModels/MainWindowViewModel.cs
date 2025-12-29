@@ -58,6 +58,8 @@ public partial class MainWindowViewModel : ViewModelBase
         AgendaVM.SetMainWindowViewModel(this);
         DashboardVM.SetMainWindowViewModel(this);
         TrabajosVM.SetClientesViewModel(ClientesVM);
+        ClientesVM.SetTrabajosViewModel(TrabajosVM);
+        ClientesVM.SetMainWindowViewModel(this);
     }
 
     // TODO: Añadir estos ViewModels cuando se creen las vistas

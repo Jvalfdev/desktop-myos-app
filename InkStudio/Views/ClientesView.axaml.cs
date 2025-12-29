@@ -42,5 +42,19 @@ public partial class ClientesView : UserControl
             }
         }
     }
+
+    /// <summary>
+    /// Maneja el click en un trabajo para abrir su ficha.
+    /// </summary>
+    private void OnTrabajoClick(object? sender, PointerPressedEventArgs e)
+    {
+        if (sender is Border border && border.DataContext is Trabajo trabajo)
+        {
+            if (DataContext is ClientesViewModel vm)
+            {
+                vm.AbrirTrabajoDesdeFichaCommand.ExecuteAsync(trabajo);
+            }
+        }
+    }
 }
 

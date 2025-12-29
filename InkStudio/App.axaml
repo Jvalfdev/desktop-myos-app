@@ -9,6 +9,7 @@
     <Application.Resources>
         <!-- Conversores -->
         <converters:EqualConverter x:Key="EqualConverter"/>
+        <converters:OrConverter x:Key="OrConverter"/>
         <converters:TimeSpanToStringConverter x:Key="TimeSpanToStringConverter"/>
         <converters:EstadoCitaToColorConverter x:Key="EstadoCitaToColorConverter"/>
         <converters:BoolToTextConverter x:Key="BoolToTextConverter"/>

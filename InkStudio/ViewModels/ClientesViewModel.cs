@@ -21,6 +21,8 @@ namespace InkStudio.ViewModels;
 public partial class ClientesViewModel : ViewModelBase
 {
     private readonly InkStudioDbContext _db = new();
+    private TrabajosViewModel? _trabajosVM;
+    private MainWindowViewModel? _mainWindowVM;
 
         /// <summary>
         /// Si se marca RGPD + Imágenes al crear un cliente nuevo,
@@ -28,6 +30,22 @@ public partial class ClientesViewModel : ViewModelBase
         /// hay que abrir automáticamente el consentimiento de imágenes.
         /// </summary>
         private int? _clientePendienteImagenesDespuesRgpdId;
+
+    /// <summary>
+    /// Permite inyectar el ViewModel de Trabajos para navegar a trabajos desde la ficha de cliente.
+    /// </summary>
+    public void SetTrabajosViewModel(TrabajosViewModel trabajosViewModel)
+    {
+        _trabajosVM = trabajosViewModel;
+    }
+
+    /// <summary>
+    /// Permite inyectar el MainWindowViewModel para navegación.
+    /// </summary>
+    public void SetMainWindowViewModel(MainWindowViewModel mainWindowViewModel)
+    {
+        _mainWindowVM = mainWindowViewModel;
+    }
 
     #region Propiedades - Lista y Selección
 
@@ -342,6 +360,47 @@ public partial class ClientesViewModel : ViewModelBase
         ClienteSeleccionado = null;
         TrabajosCliente.Clear();
         ConsentimientosCliente.Clear();
+    }
+
+    /// <summary>
+    /// Abre el modal de trabajo desde la ficha de cliente, sin cambiar de vista.
+    /// El modal se mostrará por encima del modal de cliente.
+    /// </summary>
+    [RelayCommand]
+    private async Task AbrirTrabajoDesdeFicha(Trabajo? trabajo)
+    {
+        if (trabajo == null || _trabajosVM == null)
+        {
+            Log.Warning("No se puede abrir trabajo: trabajo={Trabajo}, trabajosVM={TrabajosVM}", 
+                trabajo != null, _trabajosVM != null);
+            return;
+        }
+
+        try
+        {
+            // Recargar trabajos para asegurar que tenemos la instancia actualizada
+            await _trabajosVM.CargarTrabajosCommand.ExecuteAsync(null);
+
+            // Buscar el trabajo en la lista de trabajos
+            var trabajoEnLista = _trabajosVM.Trabajos.FirstOrDefault(t => t.Id == trabajo.Id);
+            if (trabajoEnLista == null)
+            {
+                Log.Warning("No se encontró el trabajo {TrabajoId} en la lista de trabajos", trabajo.Id);
+                return;
+            }
+
+            // Seleccionar el trabajo y abrir el modal de edición
+            // NO navegamos a Trabajos, solo abrimos el modal como overlay
+            _trabajosVM.TrabajoSeleccionado = trabajoEnLista;
+            await _trabajosVM.EditarTrabajoCommand.ExecuteAsync(null);
+
+            Log.Information("Trabajo {TrabajoId} abierto desde la ficha de cliente {ClienteId} (modal overlay)", trabajo.Id, ClienteSeleccionado?.Id);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error al abrir trabajo {TrabajoId} desde la ficha de cliente", trabajo.Id);
+            MensajeError = $"Error al abrir el trabajo: {ex.Message}";
+        }
     }
 
     /// <summary>
