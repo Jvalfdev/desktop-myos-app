@@ -1,7 +1,7 @@
 # Esquema de Tablas
 
 > **Versión:** 1.0  
-> **Fecha:** Diciembre 2024  
+> **Fecha:** Diciembre 2025  
 > **Estado:** Planificación
 
 ---

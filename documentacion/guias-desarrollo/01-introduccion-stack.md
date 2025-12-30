@@ -93,7 +93,7 @@ cliente.Saludar(); // Imprime: "Hola, soy María"
 |----------------|-----|----------|
 | Plataformas | Solo Windows | Windows, Mac, Linux |
 | IDE necesario | Visual Studio | Cualquiera (Cursor, VS Code) |
-| Modernidad | 2006 | Activo en 2024 |
+| Modernidad | 2006 | Activo en 2025 |
 | Open Source | No | Sí |
 
 ### ¿Cómo funciona?

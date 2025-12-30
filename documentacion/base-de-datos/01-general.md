@@ -1,7 +1,7 @@
 # Base de Datos - Documento General
 
 > **Versión:** 1.0  
-> **Fecha:** Diciembre 2024  
+> **Fecha:** Diciembre 2025  
 > **Estado:** Planificación
 
 ---
@@ -66,8 +66,8 @@ C:\Users\{Usuario}\AppData\Local\InkStudio\
 ├── data.db-shm             ← Shared memory (temporal)
 │
 ├── backups/                ← Copias de seguridad
-│   ├── backup_2024-12-01.db
-│   └── backup_2024-12-05.db
+│   ├── backup_2025-12-01.db
+│   └── backup_2025-12-05.db
 │
 ├── documentos/             ← Consentimientos firmados (PDF)
 │   ├── cliente_1/

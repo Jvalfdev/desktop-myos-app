@@ -1,7 +1,7 @@
 # InkStudio CRM - Documento de Idea General
 
 > **Versión:** 3.0  
-> **Fecha:** Diciembre 2024  
+> **Fecha:** Diciembre 2025  
 > **Autor:** Jose Vallejo  
 > **Estado:** En Desarrollo - Fase 3 Avanzada (75% del proyecto)
 

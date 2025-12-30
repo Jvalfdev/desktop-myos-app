@@ -51,8 +51,8 @@ inkstudio-YYYYMMDD.log
 ```
 
 **Ejemplo:**
-- `inkstudio-20241205.log` (log del 5 de diciembre de 2024)
-- `inkstudio-20241206.log` (log del 6 de diciembre de 2024)
+- `inkstudio-20251205.log` (log del 5 de diciembre de 2025)
+- `inkstudio-20251206.log` (log del 6 de diciembre de 2025)
 
 ---
 
@@ -112,12 +112,12 @@ El sistema registra diferentes niveles de eventos:
 ### Ejemplo de log
 
 ```
-2024-12-05 14:30:15.123 +01:00 [INF] InkStudio CRM iniciado - Sistema de logging activado
-2024-12-05 14:30:15.456 +01:00 [INF] Carpeta de logs: C:\Users\Usuario\AppData\Local\InkStudio\logs
-2024-12-05 14:30:20.789 +01:00 [DBG] Cargando datos del Dashboard
-2024-12-05 14:30:21.012 +01:00 [DBG] Citas de hoy cargadas: 3 citas
-2024-12-05 14:30:21.234 +01:00 [INF] Clientes cargados: 25 clientes activos
-2024-12-05 14:35:10.567 +01:00 [ERR] Error al cargar clientes desde la base de datos
+2025-12-05 14:30:15.123 +01:00 [INF] InkStudio CRM iniciado - Sistema de logging activado
+2025-12-05 14:30:15.456 +01:00 [INF] Carpeta de logs: C:\Users\Usuario\AppData\Local\InkStudio\logs
+2025-12-05 14:30:20.789 +01:00 [DBG] Cargando datos del Dashboard
+2025-12-05 14:30:21.012 +01:00 [DBG] Citas de hoy cargadas: 3 citas
+2025-12-05 14:30:21.234 +01:00 [INF] Clientes cargados: 25 clientes activos
+2025-12-05 14:35:10.567 +01:00 [ERR] Error al cargar clientes desde la base de datos
 System.Exception: SQLite error: database is locked
    at InkStudio.ViewModels.ClientesViewModel.CargarClientes()
 ```

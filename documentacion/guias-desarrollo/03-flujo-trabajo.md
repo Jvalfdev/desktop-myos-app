@@ -188,7 +188,7 @@ dotnet ef database update
 ```
 📁 Data/
    └── 📁 Migrations/
-       ├── 📄 20241205120000_CrearTablaClientes.cs      ← NUEVO
+       ├── 📄 20251205120000_CrearTablaClientes.cs      ← NUEVO
        └── 📄 InkStudioDbContextModelSnapshot.cs        ← NUEVO
 ```
 

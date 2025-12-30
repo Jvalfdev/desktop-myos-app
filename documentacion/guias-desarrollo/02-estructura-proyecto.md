@@ -272,7 +272,7 @@ InkStudio/Data/
 Data/
 ├── InkStudioDbContext.cs     # Conexión a la BD
 ├── Migrations/               # Migraciones (generadas automáticamente)
-│   ├── 20241205_Initial.cs
+│   ├── 20251205_Initial.cs
 │   └── ...
 └── Configurations/           # (Opcional) Configuraciones de tablas
     └── ClienteConfiguration.cs
