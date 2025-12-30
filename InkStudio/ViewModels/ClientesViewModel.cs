@@ -548,16 +548,30 @@ public partial class ClientesViewModel : ViewModelBase
     {
         try
         {
-            // Validación básica: solo Nombre, Apellidos y DNI son obligatorios
+            // Validación de campos obligatorios
             if (string.IsNullOrWhiteSpace(Nombre))
             {
                 MensajeError = "El nombre es obligatorio";
                 return;
             }
 
+            var nombreTrimmed = Nombre.Trim();
+            if (nombreTrimmed.Length < 2)
+            {
+                MensajeError = "El nombre debe tener al menos 2 caracteres";
+                return;
+            }
+
             if (string.IsNullOrWhiteSpace(Apellidos))
             {
                 MensajeError = "Los apellidos son obligatorios";
+                return;
+            }
+
+            var apellidosTrimmed = Apellidos.Trim();
+            if (apellidosTrimmed.Length < 2)
+            {
+                MensajeError = "Los apellidos deben tener al menos 2 caracteres";
                 return;
             }
 
@@ -575,6 +589,28 @@ public partial class ClientesViewModel : ViewModelBase
             {
                 MensajeError = "El formato del DNI/NIE no es válido. Formato: 12345678A (DNI) o X1234567L (NIE)";
                 return;
+            }
+
+            // Validar teléfono (opcional, pero si se proporciona debe tener formato válido)
+            if (!string.IsNullOrWhiteSpace(Telefono))
+            {
+                var telefonoTrimmed = Telefono.Trim();
+                if (!EsTelefonoValido(telefonoTrimmed))
+                {
+                    MensajeError = "El formato del teléfono no es válido. Formato: 612345678 o +34612345678";
+                    return;
+                }
+            }
+
+            // Validar email (opcional, pero si se proporciona debe tener formato válido)
+            if (!string.IsNullOrWhiteSpace(Email))
+            {
+                var emailTrimmed = Email.Trim();
+                if (!EsEmailValido(emailTrimmed))
+                {
+                    MensajeError = "El formato del email no es válido. Ejemplo: cliente@email.com";
+                    return;
+                }
             }
 
             // Verificar que el DNI no esté duplicado (solo para nuevos clientes o si cambió el DNI)
@@ -600,8 +636,8 @@ public partial class ClientesViewModel : ViewModelBase
             Cliente clienteGuardado;
 
             // Capitalizar nombre y apellidos (primera letra en mayúscula)
-            var nombreCapitalizado = CapitalizarTexto(Nombre.Trim());
-            var apellidosCapitalizados = CapitalizarTexto(Apellidos?.Trim() ?? string.Empty);
+            var nombreCapitalizado = CapitalizarTexto(nombreTrimmed);
+            var apellidosCapitalizados = CapitalizarTexto(apellidosTrimmed);
 
             if (EsEdicion && ClienteSeleccionado != null)
             {
@@ -1499,6 +1535,52 @@ public partial class ClientesViewModel : ViewModelBase
         char letraRecibida = nie[8];
 
         return letraEsperada == letraRecibida;
+    }
+
+    /// <summary>
+    /// Valida el formato de un teléfono español.
+    /// Acepta formatos como: 612345678, +34612345678, 612 345 678, 612-345-678
+    /// </summary>
+    private static bool EsTelefonoValido(string telefono)
+    {
+        if (string.IsNullOrWhiteSpace(telefono))
+            return false;
+
+        // Eliminar espacios, guiones y paréntesis para validar
+        string telefonoLimpio = System.Text.RegularExpressions.Regex.Replace(telefono, @"[\s\-\(\)]", "");
+
+        // Formato con prefijo internacional: +34 seguido de 9 dígitos
+        if (System.Text.RegularExpressions.Regex.IsMatch(telefonoLimpio, @"^\+34\d{9}$"))
+            return true;
+
+        // Formato nacional: 9 dígitos (puede empezar con 6, 7, 8 o 9)
+        if (System.Text.RegularExpressions.Regex.IsMatch(telefonoLimpio, @"^[6789]\d{8}$"))
+            return true;
+
+        // Formato con prefijo 0034: 0034 seguido de 9 dígitos
+        if (System.Text.RegularExpressions.Regex.IsMatch(telefonoLimpio, @"^0034\d{9}$"))
+            return true;
+
+        return false;
+    }
+
+    /// <summary>
+    /// Valida el formato de un email.
+    /// </summary>
+    private static bool EsEmailValido(string email)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+            return false;
+
+        try
+        {
+            var mailAddress = new System.Net.Mail.MailAddress(email);
+            return mailAddress.Address == email; // Verifica que no haya espacios o caracteres adicionales
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     #endregion
