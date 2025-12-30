@@ -806,17 +806,29 @@
                             Spacing="10"
                             HorizontalAlignment="Right"
                             VerticalAlignment="Center">
-                    <Button Content="📝 Firmar ahora"
-                            Command="{Binding FirmarConsentimientoTrabajoDesdeCitaCommand}"
+                    <Button Command="{Binding FirmarConsentimientoTrabajoDesdeCitaCommand}"
                             CommandParameter="{Binding TrabajoPendienteConsentimiento}"
                             Classes="btn-primary"
-                            MinWidth="140"
-                            Height="36"/>
-                    <Button Content="Más tarde"
-                            Command="{Binding CerrarAvisoConsentimientoCommand}"
+                            MinWidth="150"
+                            Height="36"
+                            Padding="20,0"
+                            HorizontalContentAlignment="Center"
+                            VerticalContentAlignment="Center">
+                        <TextBlock Text="📝 Firmar ahora"
+                                   TextAlignment="Center"
+                                   TextWrapping="NoWrap"/>
+                    </Button>
+                    <Button Command="{Binding CerrarAvisoConsentimientoCommand}"
                             Classes="btn-secondary"
-                            MinWidth="100"
-                            Height="36"/>
+                            MinWidth="120"
+                            Height="36"
+                            Padding="20,0"
+                            HorizontalContentAlignment="Center"
+                            VerticalContentAlignment="Center">
+                        <TextBlock Text="Más tarde"
+                                   TextAlignment="Center"
+                                   TextWrapping="NoWrap"/>
+                    </Button>
                 </StackPanel>
             </Grid>
         </Border>
