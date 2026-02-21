@@ -1021,9 +1021,7 @@ public partial class AgendaView : UserControl
                 var filaMin = Math.Min(filaInicio, filaFinal);
                 var filaMax = Math.Max(filaInicio, filaFinal);
 
-                if (filaMax == filaMin)
-                    filaMax = Math.Min(27, filaMin + 1);
-
+                // rowSpan = número de slots seleccionados (mínimo 1 = 30 minutos)
                 var rowSpan = filaMax - filaMin + 1;
 
                 // Convertir a hora de inicio y duración (snap natural a slots de 30 minutos)
