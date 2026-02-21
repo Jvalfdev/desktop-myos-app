@@ -849,13 +849,19 @@ public partial class AgendaViewModel : ViewModelBase
             var festivosPorFecha = festivos.ToDictionary(f => f.Fecha.Date, f => f);
 
             // Cargar citas del mes
-            var citasMes = await _db.Citas
+            // Cargar citas sin ordenar por TimeSpan (SQLite no lo soporta)
+            var citasMesRaw = await _db.Citas
                 .Include(c => c.Cliente)
                 .Include(c => c.Trabajo)
                 .Where(c => c.Fecha >= primerDiaMes && c.Fecha <= ultimoDiaMes)
                 .OrderBy(c => c.Fecha)
-                .ThenBy(c => c.HoraInicio)
                 .ToListAsync();
+
+            // Ordenar en memoria por HoraInicio
+            var citasMes = citasMesRaw
+                .OrderBy(c => c.Fecha)
+                .ThenBy(c => c.HoraInicio)
+                .ToList();
 
             // Agrupar citas por día
             var citasPorDia = citasMes.GroupBy(c => c.Fecha.Date).ToDictionary(g => g.Key, g => g.ToList());
