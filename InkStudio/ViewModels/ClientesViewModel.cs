@@ -224,6 +224,9 @@ public partial class ClientesViewModel : ViewModelBase
     /// </summary>
     partial void OnFechaNacimientoChanged(DateTimeOffset? value)
     {
+        // Notificar cambio en EsMenorFormulario para mostrar/ocultar datos del tutor
+        OnPropertyChanged(nameof(EsMenorFormulario));
+        
         // Evitar bucle infinito: si estamos actualizando desde el texto, no actualizar el texto
         if (_actualizandoFechaDesdeTexto)
             return;
@@ -261,6 +264,36 @@ public partial class ClientesViewModel : ViewModelBase
 
     [ObservableProperty]
     private string _notas = string.Empty;
+
+    #endregion
+
+    #region Propiedades - Datos del Tutor (para menores)
+
+    [ObservableProperty]
+    private string _nombreTutor = string.Empty;
+
+    [ObservableProperty]
+    private string _apellidosTutor = string.Empty;
+
+    [ObservableProperty]
+    private string _dniTutor = string.Empty;
+
+    [ObservableProperty]
+    private string _telefonoTutor = string.Empty;
+
+    /// <summary>
+    /// Indica si el cliente del formulario es menor de edad.
+    /// Se calcula a partir de la fecha de nacimiento ingresada.
+    /// </summary>
+    public bool EsMenorFormulario
+    {
+        get
+        {
+            if (!FechaNacimiento.HasValue) return false;
+            var edad = (int)((DateTime.Today - FechaNacimiento.Value).TotalDays / 365.25);
+            return edad < 18;
+        }
+    }
 
     #endregion
 
@@ -348,16 +381,19 @@ public partial class ClientesViewModel : ViewModelBase
             Cargando = true;
             MensajeError = string.Empty;
 
-                    var lista = await _db.Clientes
-                        .Include(c => c.Consentimientos)
-                        .OrderBy(c => c.Nombre)
-                        .ThenBy(c => c.Apellidos)
-                        .ToListAsync();
+            // AsNoTracking() evita que EF Core use entidades en caché,
+            // asegurando datos frescos de la BD después de actualizaciones
+            var lista = await _db.Clientes
+                .AsNoTracking()
+                .Include(c => c.Consentimientos)
+                .OrderBy(c => c.Nombre)
+                .ThenBy(c => c.Apellidos)
+                .ToListAsync();
 
-                    _todosLosClientes = new ObservableCollection<Cliente>(lista);
-                    TotalClientes = lista.Count;
-                    ActualizarPaginacion();
-                    Log.Information("Clientes cargados: {Count} clientes activos", lista.Count);
+            _todosLosClientes = new ObservableCollection<Cliente>(lista);
+            TotalClientes = lista.Count;
+            ActualizarPaginacion();
+            Log.Information("Clientes cargados: {Count} clientes activos", lista.Count);
         }
         catch (Exception ex)
         {
@@ -390,6 +426,8 @@ public partial class ClientesViewModel : ViewModelBase
             Log.Debug("Buscando clientes con término: {Termino}", TextoBusqueda);
             var busqueda = TextoBusqueda.ToLower();
             var lista = await _db.Clientes
+                .AsNoTracking()
+                .Include(c => c.Consentimientos)
                 .Where(c =>
                     c.Nombre.ToLower().Contains(busqueda) ||
                     c.Apellidos.ToLower().Contains(busqueda) ||
@@ -466,30 +504,33 @@ public partial class ClientesViewModel : ViewModelBase
 
         try
         {
-            ClienteSeleccionado = clienteAVer;
-            
-            // Recargar cliente con relaciones
-            await _db.Entry(clienteAVer).ReloadAsync();
-            await _db.Entry(clienteAVer).Collection(c => c.Trabajos).LoadAsync();
+            // Cargar cliente fresco desde BD con todas las relaciones
+            // (necesario porque CargarClientes usa AsNoTracking)
+            var clienteFresco = await _db.Clientes
+                .Include(c => c.Trabajos)
+                .Include(c => c.Consentimientos)
+                    .ThenInclude(ct => ct.Trabajo)
+                .FirstOrDefaultAsync(c => c.Id == clienteAVer.Id);
 
-            // Cargar consentimientos incluyendo el trabajo asociado (para mostrar nombres más descriptivos)
-            await _db.Entry(clienteAVer)
-                .Collection(c => c.Consentimientos)
-                .Query()
-                .Include(ct => ct.Trabajo)
-                .LoadAsync();
+            if (clienteFresco == null)
+            {
+                MensajeError = "Cliente no encontrado";
+                return;
+            }
+
+            ClienteSeleccionado = clienteFresco;
 
             // Cargar trabajos y consentimientos
             TrabajosCliente = new ObservableCollection<Trabajo>(
-                clienteAVer.Trabajos.OrderByDescending(t => t.Fecha));
+                clienteFresco.Trabajos.OrderByDescending(t => t.Fecha));
             
             ConsentimientosCliente = new ObservableCollection<Consentimiento>(
-                clienteAVer.Consentimientos.OrderByDescending(c => c.FechaFirma));
+                clienteFresco.Consentimientos.OrderByDescending(c => c.FechaFirma));
 
             MostrarFicha = true;
             MostrarFormulario = false;
             
-            Log.Information("Ficha del cliente abierta: {ClienteId}", clienteAVer.Id);
+            Log.Information("Ficha del cliente abierta: {ClienteId}", clienteFresco.Id);
         }
         catch (Exception ex)
         {
@@ -684,6 +725,13 @@ public partial class ClientesViewModel : ViewModelBase
                 ClienteSeleccionado.FechaNacimiento = FechaNacimiento?.DateTime;
                 ClienteSeleccionado.Alergias = string.IsNullOrWhiteSpace(Alergias) ? null : Alergias.Trim();
                 ClienteSeleccionado.Notas = string.IsNullOrWhiteSpace(Notas) ? null : Notas.Trim();
+                
+                // Datos del tutor (solo si es menor de edad)
+                ClienteSeleccionado.NombreTutor = string.IsNullOrWhiteSpace(NombreTutor) ? null : NombreTutor.Trim();
+                ClienteSeleccionado.ApellidosTutor = string.IsNullOrWhiteSpace(ApellidosTutor) ? null : ApellidosTutor.Trim();
+                ClienteSeleccionado.DniTutor = string.IsNullOrWhiteSpace(DniTutor) ? null : DniTutor.Trim().ToUpperInvariant();
+                ClienteSeleccionado.TelefonoTutor = string.IsNullOrWhiteSpace(TelefonoTutor) ? null : TelefonoTutor.Trim();
+                
                 clienteGuardado = ClienteSeleccionado;
             }
             else
@@ -701,6 +749,11 @@ public partial class ClientesViewModel : ViewModelBase
                     FechaNacimiento = FechaNacimiento?.DateTime,
                     Alergias = string.IsNullOrWhiteSpace(Alergias) ? null : Alergias.Trim(),
                     Notas = string.IsNullOrWhiteSpace(Notas) ? null : Notas.Trim(),
+                    // Datos del tutor (solo si es menor de edad)
+                    NombreTutor = string.IsNullOrWhiteSpace(NombreTutor) ? null : NombreTutor.Trim(),
+                    ApellidosTutor = string.IsNullOrWhiteSpace(ApellidosTutor) ? null : ApellidosTutor.Trim(),
+                    DniTutor = string.IsNullOrWhiteSpace(DniTutor) ? null : DniTutor.Trim().ToUpperInvariant(),
+                    TelefonoTutor = string.IsNullOrWhiteSpace(TelefonoTutor) ? null : TelefonoTutor.Trim(),
                     FechaRegistro = DateTime.Now,
                     Activo = true
                 };
@@ -836,12 +889,21 @@ public partial class ClientesViewModel : ViewModelBase
 
     /// <summary>
     /// Abre el flujo de firma de RGPD desde la ficha del cliente.
+    /// Para menores se usa RGPD_Menor que requiere doble firma.
     /// </summary>
     [RelayCommand]
     private async Task FirmarConsentimientoRGPDDesdeFicha(Cliente cliente)
     {
         try
         {
+            // Validar datos del tutor si es menor
+            if (cliente.EsMenorDeEdad && !cliente.TieneDatosTutor)
+            {
+                MensajeError = "⚠️ Para firmar consentimiento de menor se requieren los datos del tutor. Edita el cliente primero.";
+                Log.Warning("Firma RGPD bloqueada: menor sin datos de tutor: {ClienteId}", cliente.Id);
+                return;
+            }
+
             if (ConsentimientoFirmaVM == null)
             {
                 ConsentimientoFirmaVM = new ConsentimientoFirmaViewModel();
@@ -852,7 +914,12 @@ public partial class ClientesViewModel : ViewModelBase
                 };
             }
 
-            await ConsentimientoFirmaVM.AbrirModal(cliente, TipoConsentimiento.RGPD);
+            // Usar tipo de consentimiento correcto según edad
+            var tipoConsentimiento = cliente.EsMenorDeEdad 
+                ? TipoConsentimiento.RGPD_Menor 
+                : TipoConsentimiento.RGPD;
+
+            await ConsentimientoFirmaVM.AbrirModal(cliente, tipoConsentimiento);
         }
         catch (Exception ex)
         {
@@ -863,12 +930,21 @@ public partial class ClientesViewModel : ViewModelBase
 
     /// <summary>
     /// Abre el flujo de firma de consentimiento de imágenes desde la ficha del cliente.
+    /// NOTA: Los menores de edad no pueden firmar consentimiento de imágenes.
     /// </summary>
     [RelayCommand]
     private async Task FirmarConsentimientoImagenesDesdeFicha(Cliente cliente)
     {
         try
         {
+            // Validar que no sea menor de edad
+            if (cliente.EsMenorDeEdad)
+            {
+                MensajeError = "⚠️ Los menores de edad no pueden firmar consentimiento de uso de imágenes.";
+                Log.Warning("Intento de firma de imágenes bloqueado para cliente menor: {ClienteId}", cliente.Id);
+                return;
+            }
+
             if (ConsentimientoFirmaVM == null)
             {
                 ConsentimientoFirmaVM = new ConsentimientoFirmaViewModel();
@@ -1201,6 +1277,62 @@ public partial class ClientesViewModel : ViewModelBase
     }
 
     /// <summary>
+    /// Renueva un consentimiento existente.
+    /// Marca el consentimiento anterior como renovado y abre el modal para firmar uno nuevo.
+    /// </summary>
+    [RelayCommand]
+    private async Task RenovarConsentimiento(Consentimiento? consentimientoAnterior)
+    {
+        if (consentimientoAnterior == null || ClienteSeleccionado == null) return;
+
+        try
+        {
+            Log.Information("Iniciando renovación de consentimiento {Id} para cliente {ClienteId}", 
+                consentimientoAnterior.Id, ClienteSeleccionado.Id);
+
+            // Determinar el tipo de consentimiento a crear
+            // Si era de menor y ahora es mayor, usar el tipo normal
+            var tipoNuevo = consentimientoAnterior.Tipo;
+            if (consentimientoAnterior.EsConsentimientoMenor && !ClienteSeleccionado.EsMenorDeEdad)
+            {
+                tipoNuevo = consentimientoAnterior.Tipo switch
+                {
+                    TipoConsentimiento.RGPD_Menor => TipoConsentimiento.RGPD,
+                    TipoConsentimiento.Trabajo_Menor => TipoConsentimiento.Trabajo,
+                    _ => consentimientoAnterior.Tipo
+                };
+                Log.Information("Cliente ahora es mayor de edad, cambiando tipo de {TipoAnterior} a {TipoNuevo}", 
+                    consentimientoAnterior.Tipo, tipoNuevo);
+            }
+
+            // Abrir modal de firma para el nuevo consentimiento
+            if (ConsentimientoFirmaVM == null)
+            {
+                ConsentimientoFirmaVM = new ConsentimientoFirmaViewModel();
+                ConsentimientoFirmaVM.FirmaCompletada += async (s, cliente) =>
+                {
+                    // Marcar el consentimiento anterior como renovado
+                    consentimientoAnterior.Renovado = true;
+                    await _db.SaveChangesAsync();
+                    
+                    await CargarClientes();
+                    await RefrescarFichaClientePorIdAsync(cliente.Id);
+                };
+            }
+
+            // Si es consentimiento de trabajo, necesitamos el trabajo asociado
+            var trabajo = consentimientoAnterior.Trabajo;
+            
+            await ConsentimientoFirmaVM.AbrirModal(ClienteSeleccionado, tipoNuevo, trabajo);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error al renovar consentimiento {ConsentimientoId}", consentimientoAnterior.Id);
+            MensajeError = $"Error al renovar consentimiento: {ex.Message}";
+        }
+    }
+
+    /// <summary>
     /// Exporta el PDF de un consentimiento a la carpeta de Descargas.
     /// </summary>
     [RelayCommand]
@@ -1477,6 +1609,13 @@ public partial class ClientesViewModel : ViewModelBase
         FechaNacimientoTexto = string.Empty;
         Alergias = string.Empty;
         Notas = string.Empty;
+        
+        // Datos del tutor
+        NombreTutor = string.Empty;
+        ApellidosTutor = string.Empty;
+        DniTutor = string.Empty;
+        TelefonoTutor = string.Empty;
+        
         MensajeError = string.Empty;
         SolicitarConsentimientoImagenes = false;
         FirmarConsentimientoRGPD = false;
@@ -1499,6 +1638,13 @@ public partial class ClientesViewModel : ViewModelBase
         // FechaNacimientoTexto se actualizará automáticamente por OnFechaNacimientoChanged
         Alergias = cliente.Alergias ?? string.Empty;
         Notas = cliente.Notas ?? string.Empty;
+        
+        // Datos del tutor
+        NombreTutor = cliente.NombreTutor ?? string.Empty;
+        ApellidosTutor = cliente.ApellidosTutor ?? string.Empty;
+        DniTutor = cliente.DniTutor ?? string.Empty;
+        TelefonoTutor = cliente.TelefonoTutor ?? string.Empty;
+        
         MensajeError = string.Empty;
     }
 

@@ -31,8 +31,10 @@ public static class ConsentimientoService
             var nombreArchivo = tipo switch
             {
                 TipoConsentimiento.RGPD => "ConsentimientoRGPD.txt",
+                TipoConsentimiento.RGPD_Menor => "ConsentimientoRGPD_Menor.txt",
                 TipoConsentimiento.Imagenes => "ConsentimientoImagenes.txt",
                 TipoConsentimiento.Trabajo => "ConsentimientoTrabajo.txt",
+                TipoConsentimiento.Trabajo_Menor => "ConsentimientoTrabajo_Menor.txt",
                 _ => null
             };
 
@@ -82,6 +84,13 @@ public static class ConsentimientoService
         // Datos del cliente
         resultado = resultado.Replace("{NOMBRE_CLIENTE}", cliente.NombreCompleto);
         resultado = resultado.Replace("{DNI_CLIENTE}", cliente.Dni ?? "No especificado");
+        resultado = resultado.Replace("{FECHA_NACIMIENTO_CLIENTE}", 
+            cliente.FechaNacimiento?.ToString("dd/MM/yyyy") ?? "No especificada");
+
+        // Datos del tutor (para menores)
+        resultado = resultado.Replace("{NOMBRE_TUTOR}", cliente.NombreCompletoTutor ?? "No especificado");
+        resultado = resultado.Replace("{DNI_TUTOR}", cliente.DniTutor ?? "No especificado");
+        resultado = resultado.Replace("{TELEFONO_TUTOR}", cliente.TelefonoTutor ?? "No especificado");
 
         // Datos del estudio
         resultado = resultado.Replace("{NOMBRE_ESTUDIO}", configuracion.NombreEstudio);
@@ -119,11 +128,13 @@ public static class ConsentimientoService
     /// <param name="consentimiento">Consentimiento con datos.</param>
     /// <param name="imagenFirmaBase64">Imagen de la firma en base64.</param>
     /// <param name="rutaPdf">Ruta donde guardar el PDF.</param>
+    /// <param name="imagenFirmaTutorBase64">Imagen de la firma del tutor en base64 (para menores).</param>
     /// <returns>True si se generó correctamente, False en caso contrario.</returns>
     public static async Task<bool> GenerarPdfConsentimiento(
         Consentimiento consentimiento,
         string imagenFirmaBase64,
-        string rutaPdf)
+        string rutaPdf,
+        string? imagenFirmaTutorBase64 = null)
     {
         try
         {
@@ -191,6 +202,30 @@ public static class ConsentimientoService
                 }
             }
 
+            // Convertir imagen del tutor a bytes (para consentimientos de menores)
+            byte[]? imagenTutorBytes = null;
+            if (!string.IsNullOrEmpty(imagenFirmaTutorBase64))
+            {
+                try
+                {
+                    var base64Tutor = imagenFirmaTutorBase64;
+                    if (base64Tutor.StartsWith("data:image"))
+                    {
+                        var indexTutor = base64Tutor.IndexOf(',');
+                        if (indexTutor > 0)
+                        {
+                            base64Tutor = base64Tutor.Substring(indexTutor + 1);
+                        }
+                    }
+                    imagenTutorBytes = Convert.FromBase64String(base64Tutor);
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "Error al convertir imagen del tutor base64");
+                    imagenTutorBytes = null;
+                }
+            }
+
             // Generar PDF
             QuestPDF.Settings.License = LicenseType.Community; // Licencia gratuita para uso no comercial
 
@@ -240,19 +275,39 @@ public static class ConsentimientoService
                             column.Item()
                                 .Height(2f, Unit.Centimetre);
 
-                            // Imagen de la firma
+                            // Imagen de la firma (cliente o menor)
                             if (imagenBytes != null)
                             {
+                                var tituloFirma = consentimiento.EsConsentimientoMenor 
+                                    ? $"Firma del menor ({cliente.NombreCompleto}):" 
+                                    : "Firma del cliente:";
+                                
                                 column.Item()
                                     .PaddingTop(1, Unit.Centimetre)
                                     .PaddingBottom(0.5f, Unit.Centimetre)
-                                    .Text("Firma del cliente:")
+                                    .Text(tituloFirma)
                                     .FontSize(10)
                                     .Italic();
 
                                 column.Item()
-                                    .Height(4f, Unit.Centimetre)
+                                    .Height(3f, Unit.Centimetre)
                                     .Image(imagenBytes)
+                                    .FitArea();
+                            }
+
+                            // Imagen de la firma del tutor (para consentimientos de menores)
+                            if (imagenTutorBytes != null && consentimiento.EsConsentimientoMenor)
+                            {
+                                column.Item()
+                                    .PaddingTop(0.5f, Unit.Centimetre)
+                                    .PaddingBottom(0.5f, Unit.Centimetre)
+                                    .Text($"Firma del tutor/representante legal ({consentimiento.NombreTutorFirmante}, DNI: {consentimiento.DniTutorFirmante}):")
+                                    .FontSize(10)
+                                    .Italic();
+
+                                column.Item()
+                                    .Height(3f, Unit.Centimetre)
+                                    .Image(imagenTutorBytes)
                                     .FitArea();
                             }
 

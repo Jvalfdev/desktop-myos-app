@@ -748,6 +748,13 @@ public partial class TrabajosViewModel : ViewModelBase
                 return;
             }
 
+            // Validar datos del tutor si es menor
+            if (trabajoAFirmar.Cliente.EsMenorDeEdad && !trabajoAFirmar.Cliente.TieneDatosTutor)
+            {
+                MensajeError = "⚠️ Para firmar consentimiento de menor se requieren los datos del tutor. Edita el cliente primero.";
+                return;
+            }
+
             // Cerrar formulario si está abierto
             MostrarFormulario = false;
             MostrarAvisoConsentimiento = false;
@@ -769,7 +776,13 @@ public partial class TrabajosViewModel : ViewModelBase
                     }
                 };
             }
-            await ConsentimientoFirmaVM.AbrirModal(trabajoAFirmar.Cliente, TipoConsentimiento.Trabajo, trabajoAFirmar);
+            
+            // Usar tipo de consentimiento correcto según edad
+            var tipoConsentimiento = trabajoAFirmar.Cliente.EsMenorDeEdad 
+                ? TipoConsentimiento.Trabajo_Menor 
+                : TipoConsentimiento.Trabajo;
+            
+            await ConsentimientoFirmaVM.AbrirModal(trabajoAFirmar.Cliente, tipoConsentimiento, trabajoAFirmar);
         }
         catch (Exception ex)
         {

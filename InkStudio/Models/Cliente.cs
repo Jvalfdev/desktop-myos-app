@@ -59,6 +59,30 @@ public class Cliente
 
     #endregion
 
+    #region Datos del Tutor (para menores de edad)
+
+    /// <summary>
+    /// Nombre del tutor/representante legal (requerido si es menor).
+    /// </summary>
+    public string? NombreTutor { get; set; }
+
+    /// <summary>
+    /// Apellidos del tutor/representante legal.
+    /// </summary>
+    public string? ApellidosTutor { get; set; }
+
+    /// <summary>
+    /// DNI del tutor/representante legal.
+    /// </summary>
+    public string? DniTutor { get; set; }
+
+    /// <summary>
+    /// Teléfono del tutor/representante legal.
+    /// </summary>
+    public string? TelefonoTutor { get; set; }
+
+    #endregion
+
     #region Información Médica y Notas
 
     /// <summary>
@@ -139,16 +163,54 @@ public class Cliente
         : "No especificada";
 
     /// <summary>
-    /// Indica si el cliente tiene el consentimiento RGPD firmado.
+    /// Indica si el cliente tiene el consentimiento RGPD firmado (incluye RGPD_Menor).
     /// </summary>
     public bool TieneConsentimientoRGPD => Consentimientos
-        .Any(c => c.Tipo == TipoConsentimiento.RGPD && c.Firmado);
+        .Any(c => (c.Tipo == TipoConsentimiento.RGPD || c.Tipo == TipoConsentimiento.RGPD_Menor) 
+                  && c.Firmado && !c.Renovado);
 
     /// <summary>
     /// Indica si el cliente tiene un consentimiento de uso de imágenes firmado.
     /// </summary>
     public bool TieneConsentimientoImagenes => Consentimientos
         .Any(c => c.Tipo == TipoConsentimiento.Imagenes && c.Firmado);
+
+    /// <summary>
+    /// Indica si el cliente es menor de edad (menos de 18 años).
+    /// </summary>
+    public bool EsMenorDeEdad => Edad.HasValue && Edad.Value < 18;
+
+    /// <summary>
+    /// Indica si el cliente menor de edad tiene datos del tutor completos.
+    /// </summary>
+    public bool TieneDatosTutor => !string.IsNullOrWhiteSpace(NombreTutor) &&
+                                   !string.IsNullOrWhiteSpace(ApellidosTutor) &&
+                                   !string.IsNullOrWhiteSpace(DniTutor);
+
+    /// <summary>
+    /// Indica si el cliente menor requiere datos del tutor (es menor y no los tiene).
+    /// </summary>
+    public bool RequiereDatosTutor => EsMenorDeEdad && !TieneDatosTutor;
+
+    /// <summary>
+    /// Nombre completo del tutor.
+    /// </summary>
+    public string NombreCompletoTutor => TieneDatosTutor 
+        ? $"{NombreTutor} {ApellidosTutor}" 
+        : string.Empty;
+
+    /// <summary>
+    /// Indica si el cliente tiene consentimientos que necesitan renovación.
+    /// (Firmados como menor y ahora es mayor de edad, o antigüedad > 2 años)
+    /// </summary>
+    public bool TieneConsentimientosPendientesRenovacion => Consentimientos
+        .Any(c => c.Firmado && c.NecesitaRenovacion);
+
+    /// <summary>
+    /// Número de consentimientos que necesitan renovación.
+    /// </summary>
+    public int NumeroConsentimientosPendientesRenovacion => Consentimientos
+        .Count(c => c.Firmado && c.NecesitaRenovacion);
 
     #endregion
 }

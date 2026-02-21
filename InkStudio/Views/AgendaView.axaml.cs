@@ -321,6 +321,24 @@ public partial class AgendaView : UserControl
                             gridContenedor.Children.Add(warningIcon);
                         }
 
+                        // Indicador de menor de edad
+                        var esMenorDeEdad = citaInfo.Cita.Cliente != null && citaInfo.Cita.Cliente.EsMenorDeEdad;
+                        if (esMenorDeEdad)
+                        {
+                            var menorIcon = new TextBlock
+                            {
+                                Text = "🔞",
+                                FontSize = esCitaPequena ? 10 : 12,
+                                HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right,
+                                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top,
+                                Margin = new Avalonia.Thickness(0, -2, clienteSinRGPD ? 18 : 2, 0),
+                                Tag = "MenorDeEdad"
+                            };
+                            ToolTip.SetTip(menorIcon, "🔞 Cliente menor de edad");
+                            Grid.SetRow(menorIcon, 0);
+                            gridContenedor.Children.Add(menorIcon);
+                        }
+
                         // La barra de consentimiento (si falta) se añade/actualiza siempre más abajo,
                         // también para Borders ya existentes.
                         
@@ -458,6 +476,31 @@ public partial class AgendaView : UserControl
                         {
                             // Quitar warning si el cliente ya tiene RGPD firmado
                             gridContenedorParaConsentimiento.Children.Remove(warningExistente);
+                        }
+
+                        // Actualizar indicador de menor de edad
+                        var menorExistente = gridContenedorParaConsentimiento.Children.OfType<TextBlock>()
+                            .FirstOrDefault(tb => tb.Tag as string == "MenorDeEdad");
+                        var esMenorDeEdad = citaInfo.Cita.Cliente != null && citaInfo.Cita.Cliente.EsMenorDeEdad;
+                        
+                        if (esMenorDeEdad && menorExistente == null)
+                        {
+                            var menorIcon = new TextBlock
+                            {
+                                Text = "🔞",
+                                FontSize = esCitaPequena ? 10 : 12,
+                                HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right,
+                                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top,
+                                Margin = new Avalonia.Thickness(0, -2, clienteSinRGPD ? 18 : 2, 0),
+                                Tag = "MenorDeEdad"
+                            };
+                            ToolTip.SetTip(menorIcon, "🔞 Cliente menor de edad");
+                            Grid.SetRow(menorIcon, 0);
+                            gridContenedorParaConsentimiento.Children.Add(menorIcon);
+                        }
+                        else if (!esMenorDeEdad && menorExistente != null)
+                        {
+                            gridContenedorParaConsentimiento.Children.Remove(menorExistente);
                         }
                     }
 
@@ -1105,7 +1148,7 @@ public partial class AgendaView : UserControl
                 _estaCreandoNuevaCita = false;
 
                 // Abrir modal de nueva cita con hora y duración precargadas
-                _viewModel.CrearCitaDesdeCalendario(fechaCita, horaInicio, duracionMinutos);
+                await _viewModel.CrearCitaDesdeCalendario(fechaCita, horaInicio, duracionMinutos);
 
                 Serilog.Log.Information("🆕 Creación de cita desde calendario: Fecha={Fecha}, HoraInicio={Hora}, Duracion={Duracion}min",
                     fechaCita, horaInicio, duracionMinutos);

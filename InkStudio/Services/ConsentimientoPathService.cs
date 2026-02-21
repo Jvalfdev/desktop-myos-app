@@ -140,8 +140,10 @@ public static class ConsentimientoPathService
         var tipoFolder = tipoConsentimiento switch
         {
             Models.TipoConsentimiento.RGPD => "RGPD",
+            Models.TipoConsentimiento.RGPD_Menor => "RGPD",
             Models.TipoConsentimiento.Imagenes => "Imagenes",
             Models.TipoConsentimiento.Trabajo => "Trabajos",
+            Models.TipoConsentimiento.Trabajo_Menor => "Trabajos",
             _ => "Otros"
         };
 
@@ -169,8 +171,10 @@ public static class ConsentimientoPathService
         var tipoStr = tipoConsentimiento switch
         {
             Models.TipoConsentimiento.RGPD => "rgpd",
+            Models.TipoConsentimiento.RGPD_Menor => "rgpd_menor",
             Models.TipoConsentimiento.Imagenes => "imagenes",
             Models.TipoConsentimiento.Trabajo => "trabajo",
+            Models.TipoConsentimiento.Trabajo_Menor => "trabajo_menor",
             _ => "otro"
         };
 

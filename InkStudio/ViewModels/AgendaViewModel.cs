@@ -237,6 +237,7 @@ public partial class AgendaViewModel : ViewModelBase
     partial void OnClienteSeleccionadoChanged(Cliente? value)
     {
         OnPropertyChanged(nameof(TieneClienteSeleccionado));
+        OnPropertyChanged(nameof(EsClienteSeleccionadoMenor));
         
         if (value != null)
         {
@@ -262,6 +263,12 @@ public partial class AgendaViewModel : ViewModelBase
     /// Indica si hay un cliente seleccionado (para mostrar el selector de trabajo).
     /// </summary>
     public bool TieneClienteSeleccionado => ClienteSeleccionado != null;
+
+    /// <summary>
+    /// Indica si el cliente seleccionado es menor de edad.
+    /// Solo devuelve true si hay cliente seleccionado Y es menor.
+    /// </summary>
+    public bool EsClienteSeleccionadoMenor => ClienteSeleccionado != null && ClienteSeleccionado.EsMenorDeEdad;
 
     /// <summary>
     /// Se ejecuta cuando cambia TrabajoSeleccionado.
@@ -1117,7 +1124,9 @@ public partial class AgendaViewModel : ViewModelBase
     {
         try
         {
+            // AsNoTracking para obtener datos frescos después de ediciones
             var lista = await _db.Clientes
+                .AsNoTracking()
                 .OrderBy(c => c.Nombre)
                 .ThenBy(c => c.Apellidos)
                 .ToListAsync();
@@ -1139,8 +1148,11 @@ public partial class AgendaViewModel : ViewModelBase
     /// Abre el formulario para crear una nueva cita.
     /// </summary>
     [RelayCommand]
-    private void NuevaCita()
+    private async Task NuevaCita()
     {
+        // Recargar lista de clientes para obtener datos frescos (ej. menores actualizados)
+        await CargarClientes();
+        
         LimpiarFormulario();
         FechaCita = FechaSeleccionada ?? DateTimeOffset.Now.Date;
         EsEdicion = false;
@@ -1154,8 +1166,11 @@ public partial class AgendaViewModel : ViewModelBase
     /// <param name="fecha">Fecha de la cita.</param>
     /// <param name="horaInicio">Hora de inicio (ya alineada a slots de 30 min).</param>
     /// <param name="duracionMinutos">Duración en minutos (múltiplo de 30).</param>
-    public void CrearCitaDesdeCalendario(DateTime fecha, TimeSpan horaInicio, int duracionMinutos)
+    public async Task CrearCitaDesdeCalendario(DateTime fecha, TimeSpan horaInicio, int duracionMinutos)
     {
+        // Recargar lista de clientes para obtener datos frescos (ej. menores actualizados)
+        await CargarClientes();
+        
         LimpiarFormulario();
 
         // Desactivar ajuste automático de duración (viene del drag & drop)

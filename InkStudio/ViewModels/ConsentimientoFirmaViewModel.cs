@@ -45,8 +45,10 @@ public partial class ConsentimientoFirmaViewModel : ViewModelBase
     public string TituloModal => TipoConsentimiento switch
     {
         TipoConsentimiento.RGPD => "📝 Consentimiento RGPD",
+        TipoConsentimiento.RGPD_Menor => "📝 Consentimiento RGPD (Menor)",
         TipoConsentimiento.Imagenes => "📸 Consentimiento de uso de imágenes",
         TipoConsentimiento.Trabajo => "📝 Consentimiento de trabajo",
+        TipoConsentimiento.Trabajo_Menor => "📝 Consentimiento de trabajo (Menor)",
         _ => "📝 Consentimiento"
     };
 
@@ -103,6 +105,56 @@ public partial class ConsentimientoFirmaViewModel : ViewModelBase
     /// </summary>
     [ObservableProperty]
     private bool _esVisible = false;
+
+    #region Propiedades para menores (doble firma)
+
+    /// <summary>
+    /// Indica si es un consentimiento para menor de edad (requiere doble firma).
+    /// </summary>
+    [ObservableProperty]
+    private bool _esConsentimientoMenor = false;
+
+    /// <summary>
+    /// Indica si estamos en la fase de firma del tutor.
+    /// </summary>
+    [ObservableProperty]
+    private bool _esperandoFirmaTutor = false;
+
+    /// <summary>
+    /// Firma del menor en formato Base64 (almacenada mientras se espera la del tutor).
+    /// </summary>
+    [ObservableProperty]
+    private string? _firmaMenorBase64;
+
+    /// <summary>
+    /// Indica si ya se recibió la firma del menor.
+    /// </summary>
+    [ObservableProperty]
+    private bool _firmaMenorRecibida = false;
+
+    /// <summary>
+    /// Indica si ya se recibió la firma del tutor.
+    /// </summary>
+    [ObservableProperty]
+    private bool _firmaTutorRecibida = false;
+
+    /// <summary>
+    /// Título de la fase actual de firma.
+    /// </summary>
+    public string TituloFaseFirma => EsperandoFirmaTutor 
+        ? "✍️ Firma del Tutor/Representante Legal" 
+        : EsConsentimientoMenor 
+            ? "✍️ Firma del Menor" 
+            : "✍️ Firma del Cliente";
+
+    /// <summary>
+    /// Indica si el cliente es menor y no tiene datos del tutor.
+    /// </summary>
+    public bool FaltanDatosTutor => EsConsentimientoMenor && 
+                                    Cliente != null && 
+                                    !Cliente.TieneDatosTutor;
+
+    #endregion
 
     /// <summary>
     /// Indica si se está procesando (generando PDF, etc.).
@@ -181,6 +233,7 @@ public partial class ConsentimientoFirmaViewModel : ViewModelBase
 
     /// <summary>
     /// Confirma la firma y genera el PDF.
+    /// Para menores, maneja el flujo de doble firma.
     /// </summary>
     [RelayCommand]
     private async Task ConfirmarFirma()
@@ -203,10 +256,48 @@ public partial class ConsentimientoFirmaViewModel : ViewModelBase
             return;
         }
 
+        // Flujo de doble firma para menores
+        if (EsConsentimientoMenor && !EsperandoFirmaTutor)
+        {
+            // Primera fase completada: firma del menor recibida
+            // Verificar que el cliente tiene datos del tutor
+            if (!Cliente.TieneDatosTutor)
+            {
+                EstadoConexion = "⚠️ Faltan datos del tutor. Edita el cliente primero.";
+                return;
+            }
+
+            // Guardar firma del menor y pasar a fase 2
+            _consentimiento.FirmaMenorBase64 = FirmaMenorBase64;
+            EsperandoFirmaTutor = true;
+            
+            // Limpiar para nueva firma (del tutor)
+            FirmaRecibida = false;
+            ImagenFirmaBase64 = null;
+            AceptaTerminos = false;
+            
+            // Notificar cambios en propiedades calculadas
+            OnPropertyChanged(nameof(TituloFaseFirma));
+            
+            EstadoConexion = "👨‍👩‍👧 Ahora debe firmar el tutor/representante legal";
+            
+            // Generar nuevo token y QR para la firma del tutor
+            await IniciarFirmaCommand.ExecuteAsync(null);
+            return;
+        }
+
         try
         {
             EstaProcesando = true;
             EstadoConexion = "📄 Generando PDF...";
+
+            // Si es menor, guardar también la firma del tutor
+            if (EsConsentimientoMenor)
+            {
+                _consentimiento.FirmaTutorBase64 = ImagenFirmaBase64;
+                _consentimiento.NombreTutorFirmante = Cliente.NombreCompletoTutor;
+                _consentimiento.DniTutorFirmante = Cliente.DniTutor;
+            }
 
             // Generar ruta del PDF
             var rutaPdf = ConsentimientoPathService.ObtenerRutaCompletaPdf(
@@ -214,11 +305,15 @@ public partial class ConsentimientoFirmaViewModel : ViewModelBase
                 TipoConsentimiento,
                 Trabajo?.Id);
 
-            // Generar PDF
+            // Generar PDF (para menores incluirá ambas firmas)
+            var firmaParaPdf = EsConsentimientoMenor ? FirmaMenorBase64 : ImagenFirmaBase64;
+            var firmaTutorParaPdf = EsConsentimientoMenor ? ImagenFirmaBase64 : null;
+            
             var pdfGenerado = await ConsentimientoService.GenerarPdfConsentimiento(
                 _consentimiento,
-                ImagenFirmaBase64,
-                rutaPdf);
+                firmaParaPdf ?? ImagenFirmaBase64,
+                rutaPdf,
+                firmaTutorParaPdf);
 
             if (!pdfGenerado)
             {
@@ -300,6 +395,11 @@ public partial class ConsentimientoFirmaViewModel : ViewModelBase
         TipoConsentimiento = tipo;
         Trabajo = trabajo;
 
+        // Detectar si es consentimiento para menor de edad
+        EsConsentimientoMenor = cliente.EsMenorDeEdad && 
+                               (tipo == TipoConsentimiento.RGPD_Menor || 
+                                tipo == TipoConsentimiento.Trabajo_Menor);
+
         // Cargar texto del consentimiento
         var plantilla = ConsentimientoService.CargarPlantillaTexto(tipo);
         if (string.IsNullOrEmpty(plantilla))
@@ -340,12 +440,18 @@ public partial class ConsentimientoFirmaViewModel : ViewModelBase
                 Tipo = tipo,
                 TrabajoId = trabajo?.Id,
                 FechaFirma = DateTime.Now,
-                Firmado = false
+                Firmado = false,
+                EsConsentimientoMenor = EsConsentimientoMenor,
+                EdadClienteAlFirmar = cliente.Edad
             };
         }
 
         // Limpiar estado primero
         LimpiarEstado();
+        
+        // Notificar cambio en propiedades calculadas
+        OnPropertyChanged(nameof(TituloFaseFirma));
+        OnPropertyChanged(nameof(FaltanDatosTutor));
         
         // Ahora abrir el modal explícitamente
         EsVisible = true;
@@ -407,7 +513,27 @@ public partial class ConsentimientoFirmaViewModel : ViewModelBase
 
         ImagenFirmaBase64 = e.ImagenBase64;
         FirmaRecibida = true;
-        EstadoConexion = "✅ Firma recibida - Revisa y confirma";
+
+        if (EsConsentimientoMenor)
+        {
+            if (!EsperandoFirmaTutor)
+            {
+                // Primera fase: firma del menor
+                FirmaMenorBase64 = e.ImagenBase64;
+                FirmaMenorRecibida = true;
+                EstadoConexion = "✅ Firma del menor recibida - Revisa y continúa con la firma del tutor";
+            }
+            else
+            {
+                // Segunda fase: firma del tutor
+                FirmaTutorRecibida = true;
+                EstadoConexion = "✅ Firma del tutor recibida - Revisa y confirma";
+            }
+        }
+        else
+        {
+            EstadoConexion = "✅ Firma recibida - Revisa y confirma";
+        }
     }
 
     /// <summary>
@@ -423,6 +549,12 @@ public partial class ConsentimientoFirmaViewModel : ViewModelBase
         AceptaTerminos = false;
         EstaProcesando = false;
         _tokenActual = null;
+        
+        // Limpiar estado de menores
+        EsperandoFirmaTutor = false;
+        FirmaMenorBase64 = null;
+        FirmaMenorRecibida = false;
+        FirmaTutorRecibida = false;
     }
 
     #endregion
