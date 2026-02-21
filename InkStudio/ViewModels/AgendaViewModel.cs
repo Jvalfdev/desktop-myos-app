@@ -322,12 +322,18 @@ public partial class AgendaViewModel : ViewModelBase
     private TipoCita _tipoCita = TipoCita.Tatuaje;
 
     /// <summary>
+    /// Indica si se debe ajustar la duración automáticamente al cambiar el tipo de cita.
+    /// Se desactiva cuando se crea una cita desde drag & drop (la duración viene del área seleccionada).
+    /// </summary>
+    private bool _ajustarDuracionPorTipo = true;
+
+    /// <summary>
     /// Se ejecuta cuando cambia TipoCita para ajustar la duración predeterminada.
     /// </summary>
     partial void OnTipoCitaChanged(TipoCita value)
     {
-        // Ajustar duración según el tipo de cita (solo si no estamos editando)
-        if (!EsEdicion)
+        // Ajustar duración según el tipo de cita (solo desde botón, no desde drag & drop ni edición)
+        if (_ajustarDuracionPorTipo && !EsEdicion)
         {
             DuracionMinutos = value switch
             {
@@ -1151,13 +1157,15 @@ public partial class AgendaViewModel : ViewModelBase
     {
         LimpiarFormulario();
 
+        // Desactivar ajuste automático de duración (viene del drag & drop)
+        _ajustarDuracionPorTipo = false;
+
         // Fecha y hora
         FechaCita = new DateTimeOffset(fecha);
         HoraInicioString = $"{horaInicio.Hours:D2}:{horaInicio.Minutes:D2}";
 
-        // Duración (asegurar múltiplos de 30 minutos)
-        if (duracionMinutos < 30) duracionMinutos = 30;
-        duracionMinutos = (int)(Math.Round(duracionMinutos / 30.0) * 30);
+        // Duración (asegurar múltiplos de 30 minutos, mínimo 15 para piercings)
+        if (duracionMinutos < 15) duracionMinutos = 15;
         DuracionMinutos = duracionMinutos;
 
         // Valores por defecto razonables
@@ -1693,6 +1701,9 @@ public partial class AgendaViewModel : ViewModelBase
     /// </summary>
     private void LimpiarFormulario()
     {
+        // Reactivar ajuste automático de duración (para el botón "Nueva Cita")
+        _ajustarDuracionPorTipo = true;
+        
         ClienteSeleccionado = null;
         TrabajoSeleccionado = null;
         TrabajosDelCliente.Clear();
