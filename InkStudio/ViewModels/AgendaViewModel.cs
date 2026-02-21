@@ -583,6 +583,7 @@ public partial class AgendaViewModel : ViewModelBase
 
             var query = _db.Citas
                 .Include(c => c.Cliente)
+                    .ThenInclude(cl => cl.Consentimientos)
                 .Include(c => c.Trabajo!)
                     .ThenInclude(t => t.Consentimiento)
                 .Where(c => c.Fecha >= inicio && c.Fecha < fin);

@@ -303,6 +303,24 @@ public partial class AgendaView : UserControl
                         Grid.SetRow(stackPanel, 0);
                         gridContenedor.Children.Add(stackPanel);
 
+                        // Indicador de warning si el cliente no tiene RGPD firmado
+                        var clienteSinRGPD = citaInfo.Cita.Cliente != null && !citaInfo.Cita.Cliente.TieneConsentimientoRGPD;
+                        if (clienteSinRGPD)
+                        {
+                            var warningIcon = new TextBlock
+                            {
+                                Text = "⚠️",
+                                FontSize = esCitaPequena ? 10 : 14,
+                                HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right,
+                                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top,
+                                Margin = new Avalonia.Thickness(0, -2, 2, 0),
+                                Tag = "WarningRGPD"
+                            };
+                            ToolTip.SetTip(warningIcon, "⚠️ Cliente sin RGPD firmado");
+                            Grid.SetRow(warningIcon, 0);
+                            gridContenedor.Children.Add(warningIcon);
+                        }
+
                         // La barra de consentimiento (si falta) se añade/actualiza siempre más abajo,
                         // también para Borders ya existentes.
                         
@@ -411,6 +429,35 @@ public partial class AgendaView : UserControl
                         {
                             // Quitar la barra si ya no hace falta (porque ahora tiene consentimiento o se ha quitado el trabajo)
                             gridContenedorParaConsentimiento.Children.Remove(barraExistente);
+                        }
+
+                        // Actualizar el indicador de warning si el cliente no tiene RGPD firmado
+                        var warningExistente = gridContenedorParaConsentimiento.Children
+                            .OfType<TextBlock>()
+                            .FirstOrDefault(t => Equals(t.Tag, "WarningRGPD"));
+
+                        var clienteSinRGPD = citaInfo.Cita.Cliente != null && !citaInfo.Cita.Cliente.TieneConsentimientoRGPD;
+
+                        if (clienteSinRGPD && warningExistente == null)
+                        {
+                            // Añadir warning si no existía
+                            var warningIcon = new TextBlock
+                            {
+                                Text = "⚠️",
+                                FontSize = esCitaPequena ? 10 : 14,
+                                HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right,
+                                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top,
+                                Margin = new Avalonia.Thickness(0, -2, 2, 0),
+                                Tag = "WarningRGPD"
+                            };
+                            ToolTip.SetTip(warningIcon, "⚠️ Cliente sin RGPD firmado");
+                            Grid.SetRow(warningIcon, 0);
+                            gridContenedorParaConsentimiento.Children.Add(warningIcon);
+                        }
+                        else if (!clienteSinRGPD && warningExistente != null)
+                        {
+                            // Quitar warning si el cliente ya tiene RGPD firmado
+                            gridContenedorParaConsentimiento.Children.Remove(warningExistente);
                         }
                     }
 
