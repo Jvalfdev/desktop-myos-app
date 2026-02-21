@@ -308,7 +308,7 @@ public partial class AgendaViewModel : ViewModelBase
     private string _horaFinString = "11:00";
 
     [ObservableProperty]
-    private int _duracionMinutos = 60;
+    private int _duracionMinutos = 30; // Por defecto 30 min (tatuaje)
 
     /// <summary>
     /// Se ejecuta cuando cambia DuracionMinutos.
@@ -320,6 +320,24 @@ public partial class AgendaViewModel : ViewModelBase
 
     [ObservableProperty]
     private TipoCita _tipoCita = TipoCita.Tatuaje;
+
+    /// <summary>
+    /// Se ejecuta cuando cambia TipoCita para ajustar la duración predeterminada.
+    /// </summary>
+    partial void OnTipoCitaChanged(TipoCita value)
+    {
+        // Ajustar duración según el tipo de cita (solo si no estamos editando)
+        if (!EsEdicion)
+        {
+            DuracionMinutos = value switch
+            {
+                TipoCita.Piercing => 15,
+                TipoCita.Tatuaje => 30,
+                TipoCita.Consulta => 30,
+                _ => 30
+            };
+        }
+    }
 
     [ObservableProperty]
     private string _descripcion = string.Empty;
@@ -1681,9 +1699,9 @@ public partial class AgendaViewModel : ViewModelBase
         FechaCita = DateTimeOffset.Now.Date;
         HoraInicio = new TimeSpan(10, 0, 0);
         HoraInicioString = "10:00"; // Formato 24 horas
-        DuracionMinutos = 60;
-        CalcularHoraFin(); // Calcular hora fin inicial
         TipoCita = TipoCita.Tatuaje;
+        DuracionMinutos = 30; // Duración por defecto para tatuaje
+        CalcularHoraFin(); // Calcular hora fin inicial
         Descripcion = string.Empty;
         EstadoCita = EstadoCita.Pendiente;
         Notas = string.Empty;
