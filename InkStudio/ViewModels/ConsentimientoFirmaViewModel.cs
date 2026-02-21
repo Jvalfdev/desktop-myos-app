@@ -240,6 +240,10 @@ public partial class ConsentimientoFirmaViewModel : ViewModelBase
 
             // Disparar evento de firma completada
             FirmaCompletada?.Invoke(this, Cliente);
+
+            // Esperar un momento para que el usuario vea el mensaje y cerrar el modal
+            await Task.Delay(1500);
+            CerrarModal();
         }
         catch (Exception ex)
         {

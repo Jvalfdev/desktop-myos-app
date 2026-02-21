@@ -1183,12 +1183,6 @@ public partial class AgendaViewModel : ViewModelBase
                 return;
             }
 
-            if (TrabajoSeleccionado == null)
-            {
-                MensajeError = "Debes seleccionar un trabajo";
-                return;
-            }
-
             if (!FechaCita.HasValue)
             {
                 MensajeError = "Debes seleccionar una fecha";

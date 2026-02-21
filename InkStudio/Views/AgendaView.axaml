@@ -526,11 +526,11 @@
                                 </ComboBox>
                             </StackPanel>
                             
-                            <!-- Trabajo -->
+                            <!-- Trabajo (opcional) -->
                             <StackPanel Spacing="8" IsVisible="{Binding TieneClienteSeleccionado}">
                                 <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
                                     <TextBlock Grid.Column="0"
-                                               Text="Trabajo *" 
+                                               Text="Trabajo (opcional)" 
                                                Opacity="0.8" 
                                                FontSize="13"
                                                FontWeight="SemiBold"
@@ -543,8 +543,14 @@
                                             Height="28"
                                             Command="{Binding CrearTrabajoNuevoCommand}"/>
                                 </Grid>
+                                <TextBlock Text="💡 Deja vacío para citas genéricas (consulta, dibujo, etc.)"
+                                           FontSize="11"
+                                           Opacity="0.6"
+                                           Foreground="#a0a0a0"
+                                           Margin="0,-4,0,4"/>
                                 <ComboBox ItemsSource="{Binding TrabajosDelCliente}"
                                           SelectedItem="{Binding TrabajoSeleccionado}"
+                                          PlaceholderText="Sin trabajo asociado (cita genérica)"
                                           Height="40">
                                     <ComboBox.ItemTemplate>
                                         <DataTemplate>
