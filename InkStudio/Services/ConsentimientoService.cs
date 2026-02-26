@@ -95,6 +95,8 @@ public static class ConsentimientoService
         // Datos del estudio
         resultado = resultado.Replace("{NOMBRE_ESTUDIO}", configuracion.NombreEstudio);
         resultado = resultado.Replace("{DIRECCION_ESTUDIO}", configuracion.Direccion ?? "No especificada");
+        resultado = resultado.Replace("{EMAIL_ESTUDIO}", configuracion.Email ?? "No especificado");
+        resultado = resultado.Replace("{TELEFONO_ESTUDIO}", configuracion.Telefono ?? "No especificado");
 
         // Fecha y hora
         resultado = resultado.Replace("{FECHA_FIRMA}", fechaFirma.ToString("dd/MM/yyyy"));
