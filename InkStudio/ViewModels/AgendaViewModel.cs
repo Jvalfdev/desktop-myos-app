@@ -2135,6 +2135,89 @@ public partial class AgendaViewModel : ViewModelBase
     }
 
     #endregion
+
+    #region Email Recordatorio
+
+    [ObservableProperty]
+    private string _mensajeEmailEnviado = string.Empty;
+
+    /// <summary>
+    /// Envía un email de recordatorio al cliente de la cita.
+    /// </summary>
+    [RelayCommand]
+    private async Task EnviarRecordatorioAsync(Cita cita)
+    {
+        if (cita == null) return;
+
+        try
+        {
+            MensajeError = string.Empty;
+            MensajeEmailEnviado = string.Empty;
+
+            using var dbEmail = new InkStudioDbContext();
+            var emailService = new EmailService(dbEmail);
+
+            // Verificar configuración SMTP
+            if (!await emailService.EstaConfiguradoAsync())
+            {
+                MensajeError = "⚠️ El SMTP no está configurado. Ve a Configuración para configurarlo.";
+                return;
+            }
+
+            // Verificar que la cita tenga cliente con email
+            if (cita.Cliente == null)
+            {
+                MensajeError = "La cita no tiene cliente asociado.";
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(cita.Cliente.Email))
+            {
+                MensajeError = $"El cliente {cita.Cliente.NombreCompleto} no tiene email registrado.";
+                return;
+            }
+
+            // Enviar recordatorio
+            var (exito, mensaje) = await emailService.EnviarRecordatorioCitaAsync(cita);
+
+            if (exito)
+            {
+                // Actualizar estado de la cita
+                var citaDb = await _db.Citas.FirstOrDefaultAsync(c => c.Id == cita.Id);
+                if (citaDb != null)
+                {
+                    citaDb.EmailEnviado = true;
+                    citaDb.FechaEmailEnviado = DateTime.Now;
+                    await _db.SaveChangesAsync();
+                    
+                    // Actualizar cita local
+                    cita.EmailEnviado = true;
+                    cita.FechaEmailEnviado = DateTime.Now;
+                }
+
+                MensajeEmailEnviado = $"✅ {mensaje}";
+                Log.Information("Recordatorio enviado para cita {CitaId}", cita.Id);
+
+                // Limpiar mensaje después de unos segundos
+                _ = Task.Run(async () =>
+                {
+                    await Task.Delay(5000);
+                    MensajeEmailEnviado = string.Empty;
+                });
+            }
+            else
+            {
+                MensajeError = $"❌ {mensaje}";
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error al enviar recordatorio de cita");
+            MensajeError = $"Error al enviar recordatorio: {ex.Message}";
+        }
+    }
+
+    #endregion
 }
 
 /// <summary>

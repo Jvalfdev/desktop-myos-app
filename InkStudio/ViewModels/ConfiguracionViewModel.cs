@@ -269,6 +269,41 @@ public partial class ConfiguracionViewModel : ViewModelBase
             LogoPreview = null;
         }
     }
+
+    [RelayCommand]
+    private async Task ProbarSmtpAsync()
+    {
+        try
+        {
+            Cargando = true;
+            MensajeError = string.Empty;
+            MensajeOk = string.Empty;
+
+            // Primero guardar configuración actual
+            await GuardarConfiguracion();
+
+            var emailService = new EmailService(_db);
+            var (exito, mensaje) = await emailService.ProbarConexionSmtpAsync();
+
+            if (exito)
+            {
+                MensajeOk = $"✅ {mensaje}";
+            }
+            else
+            {
+                MensajeError = $"❌ {mensaje}";
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error al probar conexión SMTP");
+            MensajeError = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            Cargando = false;
+        }
+    }
 }
 
 

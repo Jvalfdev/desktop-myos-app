@@ -161,6 +161,14 @@
                        FontSize="11"
                        Opacity="0.5"
                        Margin="0,8,0,0"/>
+            
+            <Button Content="📤 Probar conexión SMTP"
+                    Command="{Binding ProbarSmtpCommand}"
+                    Classes="btn-secondary"
+                    Height="36"
+                    Padding="16,0"
+                    Margin="0,12,0,0"
+                    HorizontalAlignment="Left"/>
           </StackPanel>
         </Border>
 
