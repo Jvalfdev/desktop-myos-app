@@ -70,11 +70,12 @@ public class EmailService
             };
             mensaje.To.Add(new MailAddress(cita.Cliente.Email, cita.Cliente.NombreCompleto));
 
-            // Configurar cliente SMTP
+            // Configurar cliente SMTP (limpiar espacios de la contraseña por si viene de Google)
+            var passwordLimpia = cfg.SmtpPassword?.Replace(" ", "") ?? "";
             using var smtp = new SmtpClient(cfg.SmtpServidor, cfg.SmtpPuerto)
             {
                 EnableSsl = cfg.SmtpUsarSsl,
-                Credentials = new NetworkCredential(cfg.SmtpUsuario, cfg.SmtpPassword),
+                Credentials = new NetworkCredential(cfg.SmtpUsuario, passwordLimpia),
                 Timeout = 30000
             };
 
@@ -229,10 +230,12 @@ public class EmailService
                 return (false, "El SMTP no está configurado.");
             }
 
+            // Limpiar espacios de la contraseña (Google las da con espacios)
+            var passwordLimpia = cfg.SmtpPassword?.Replace(" ", "") ?? "";
             using var smtp = new SmtpClient(cfg.SmtpServidor, cfg.SmtpPuerto)
             {
                 EnableSsl = cfg.SmtpUsarSsl,
-                Credentials = new NetworkCredential(cfg.SmtpUsuario, cfg.SmtpPassword),
+                Credentials = new NetworkCredential(cfg.SmtpUsuario, passwordLimpia),
                 Timeout = 10000
             };
 

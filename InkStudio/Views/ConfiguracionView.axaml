@@ -212,7 +212,8 @@
                   Classes="btn-primary"
                   Command="{Binding GuardarConfiguracionCommand}"
                   HorizontalAlignment="Right"
-                  Width="220"
+                  MinWidth="220"
+                  Padding="24,0"
                   Height="40"
                   HorizontalContentAlignment="Center"
                   VerticalContentAlignment="Center"/>
