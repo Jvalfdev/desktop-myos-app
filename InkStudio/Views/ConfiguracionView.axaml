@@ -58,6 +58,62 @@
                 <TextBox Text="{Binding Email}"/>
               </StackPanel>
             </StackPanel>
+
+            <!-- Logo del estudio -->
+            <Border Background="#1e293b" CornerRadius="8" Padding="16" Margin="0,12,0,0">
+              <Grid ColumnDefinitions="Auto,*">
+                <!-- Preview del logo -->
+                <Border Grid.Column="0"
+                        Width="120"
+                        Height="120"
+                        CornerRadius="8"
+                        Background="#0f172a"
+                        BorderBrush="#374155"
+                        BorderThickness="1"
+                        Margin="0,0,20,0">
+                  <Grid>
+                    <!-- Placeholder -->
+                    <StackPanel VerticalAlignment="Center"
+                                HorizontalAlignment="Center"
+                                IsVisible="{Binding !TieneLogo}">
+                      <TextBlock Text="🖼️" FontSize="32" HorizontalAlignment="Center" Opacity="0.4"/>
+                      <TextBlock Text="Sin logo" FontSize="11" Opacity="0.5" HorizontalAlignment="Center"/>
+                    </StackPanel>
+                    <!-- Logo actual -->
+                    <Image Source="{Binding LogoPreview}"
+                           Stretch="Uniform"
+                           Margin="8"
+                           IsVisible="{Binding TieneLogo}"/>
+                  </Grid>
+                </Border>
+
+                <!-- Controles -->
+                <StackPanel Grid.Column="1" Spacing="10" VerticalAlignment="Center">
+                  <TextBlock Text="Logo del estudio" FontWeight="SemiBold" FontSize="14"/>
+                  <TextBlock Text="Se mostrará en la pantalla de carga y en los documentos PDF"
+                             FontSize="11" Opacity="0.6" TextWrapping="Wrap"/>
+                  <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,8,0,0">
+                    <Button Content="📁 Seleccionar imagen"
+                            Command="{Binding SeleccionarLogoCommand}"
+                            Classes="btn-secondary"
+                            Height="34"
+                            Padding="12,0"/>
+                    <Button Content="🗑️ Quitar"
+                            Command="{Binding QuitarLogoCommand}"
+                            Classes="btn-secondary"
+                            Height="34"
+                            Padding="12,0"
+                            IsVisible="{Binding TieneLogo}"/>
+                  </StackPanel>
+                  <TextBlock Text="{Binding LogoPath}"
+                             FontSize="10"
+                             Opacity="0.4"
+                             TextTrimming="CharacterEllipsis"
+                             MaxWidth="300"
+                             IsVisible="{Binding TieneLogo}"/>
+                </StackPanel>
+              </Grid>
+            </Border>
           </StackPanel>
         </Border>
 

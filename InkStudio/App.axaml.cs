@@ -4,6 +4,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Data.Core;
 using Avalonia.Data.Core.Plugins;
 using System.Linq;
+using System.Threading.Tasks;
 using Avalonia.Markup.Xaml;
 using InkStudio.ViewModels;
 using InkStudio.Views;
@@ -17,13 +18,22 @@ public partial class App : Application
         AvaloniaXamlLoader.Load(this);
     }
 
-    public override void OnFrameworkInitializationCompleted()
+    public override async void OnFrameworkInitializationCompleted()
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             // Avoid duplicate validations from both Avalonia and the CommunityToolkit. 
             // More info: https://docs.avaloniaui.net/docs/guides/development-guides/data-validation#manage-validationplugins
             DisableAvaloniaDataAnnotationValidation();
+
+            // Mostrar splash mientras carga
+            var splash = new SplashView();
+            splash.Show();
+
+            // Cargar configuración y mostrar logo
+            await splash.CargarConfiguracionAsync();
+
+            // Crear ventana principal
             var mainWindow = new MainWindow
             {
                 DataContext = new MainWindowViewModel(),
@@ -33,6 +43,10 @@ public partial class App : Application
             mainWindow.WindowState = WindowState.Maximized;
             
             desktop.MainWindow = mainWindow;
+            mainWindow.Show();
+
+            // Cerrar splash
+            splash.Close();
         }
 
         base.OnFrameworkInitializationCompleted();

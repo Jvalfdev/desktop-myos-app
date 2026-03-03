@@ -1,9 +1,12 @@
 using System;
+using System.IO;
 using System.Threading.Tasks;
+using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using InkStudio.Data;
 using InkStudio.Models;
+using InkStudio.Services;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 
@@ -62,6 +65,14 @@ public partial class ConfiguracionViewModel : ViewModelBase
     [ObservableProperty]
     private string _mensajeOk = string.Empty;
 
+    [ObservableProperty]
+    private string? _logoPath;
+
+    [ObservableProperty]
+    private Bitmap? _logoPreview;
+
+    public bool TieneLogo => !string.IsNullOrEmpty(LogoPath) && File.Exists(LogoPath);
+
     public ConfiguracionViewModel()
     {
         _ = CargarConfiguracion();
@@ -96,6 +107,10 @@ public partial class ConfiguracionViewModel : ViewModelBase
             SmtpUsarSsl = cfg.SmtpUsarSsl;
             TemaOscuro = cfg.TemaOscuro;
             IdiomaApp = cfg.IdiomaApp;
+            LogoPath = cfg.LogoPath;
+
+            // Cargar preview del logo
+            CargarLogoPreview();
         }
         catch (Exception ex)
         {
@@ -136,6 +151,7 @@ public partial class ConfiguracionViewModel : ViewModelBase
             cfg.SmtpUsarSsl = SmtpUsarSsl;
             cfg.TemaOscuro = TemaOscuro;
             cfg.IdiomaApp = string.IsNullOrWhiteSpace(IdiomaApp) ? "es" : IdiomaApp.Trim();
+            cfg.LogoPath = LogoPath;
 
             await _db.SaveChangesAsync();
             MensajeOk = "Configuración guardada correctamente.";
@@ -149,6 +165,108 @@ public partial class ConfiguracionViewModel : ViewModelBase
         finally
         {
             Cargando = false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task SeleccionarLogoAsync()
+    {
+        try
+        {
+            var topLevel = Avalonia.Application.Current?.ApplicationLifetime is 
+                Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop 
+                ? desktop.MainWindow 
+                : null;
+
+            if (topLevel == null)
+            {
+                MensajeError = "No se pudo abrir el selector de archivos.";
+                return;
+            }
+
+            var archivos = await topLevel.StorageProvider.OpenFilePickerAsync(new Avalonia.Platform.Storage.FilePickerOpenOptions
+            {
+                Title = "Seleccionar logo del estudio",
+                AllowMultiple = false,
+                FileTypeFilter = new[]
+                {
+                    new Avalonia.Platform.Storage.FilePickerFileType("Imágenes")
+                    {
+                        Patterns = new[] { "*.jpg", "*.jpeg", "*.png", "*.bmp", "*.gif" }
+                    }
+                }
+            });
+
+            if (archivos == null || archivos.Count == 0)
+                return;
+
+            var archivo = archivos[0];
+            var rutaOrigen = archivo.Path.LocalPath;
+
+            // Copiar a carpeta de la aplicación
+            var carpetaLogos = Path.Combine(ConsentimientoPathService.ObtenerRutaBaseFicheros(), "logos");
+            Directory.CreateDirectory(carpetaLogos);
+
+            var extension = Path.GetExtension(rutaOrigen);
+            var rutaDestino = Path.Combine(carpetaLogos, $"logo_estudio{extension}");
+
+            File.Copy(rutaOrigen, rutaDestino, overwrite: true);
+            LogoPath = rutaDestino;
+
+            CargarLogoPreview();
+            OnPropertyChanged(nameof(TieneLogo));
+
+            Log.Information("Logo seleccionado: {Ruta}", rutaDestino);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error al seleccionar logo");
+            MensajeError = $"Error al seleccionar logo: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    private void QuitarLogo()
+    {
+        try
+        {
+            // Eliminar archivo si existe
+            if (!string.IsNullOrEmpty(LogoPath) && File.Exists(LogoPath))
+            {
+                File.Delete(LogoPath);
+            }
+
+            LogoPath = null;
+            LogoPreview = null;
+            OnPropertyChanged(nameof(TieneLogo));
+
+            Log.Information("Logo eliminado");
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error al quitar logo");
+            MensajeError = $"Error al quitar logo: {ex.Message}";
+        }
+    }
+
+    private void CargarLogoPreview()
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(LogoPath) || !File.Exists(LogoPath))
+            {
+                LogoPreview = null;
+                return;
+            }
+
+            using var stream = File.OpenRead(LogoPath);
+            LogoPreview = new Bitmap(stream);
+            OnPropertyChanged(nameof(TieneLogo));
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Error al cargar preview del logo");
+            LogoPreview = null;
         }
     }
 }
