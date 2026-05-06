@@ -243,3 +243,4 @@ El endpoint `/releases/latest` ignora prereleases, así que puedes subir `v1.1.0
 | 1.0.0   | v1.0.0 | 17 abr 2026  | Primera versión "tester" con instalador Inno Setup.                                    |
 | 1.0.1   | v1.0.1 | 21 abr 2026  | Fix transición Setup inicial → MainWindow (crashe).                                    |
 | 1.0.2   | v1.0.2 | 6 may 2026   | Botones del setup centrados, consentimiento completo en móvil, refresh ficha cliente. Repo pasado a público; primera release verificada con `gh` y `gh repo edit --visibility public`. |
+| 1.0.3   | v1.0.3 | 6 may 2026   | UI: etiqueta de versión visible en la barra lateral. Sirve como prueba E2E del flujo auto-update sobre 1.0.2. |
