@@ -31,6 +31,9 @@ public class FirmaWebService : IDisposable
     // Almacenar tokens activos con su expiración
     private readonly ConcurrentDictionary<string, DateTime> _tokensActivos = new();
 
+    // Texto del consentimiento asociado a cada token (para mostrarlo en el móvil)
+    private readonly ConcurrentDictionary<string, ContextoFirma> _contextoPorToken = new();
+
     private const int PuertoPorDefecto = 8080;
     private const int TimeoutTokenMinutos = 10; // Los tokens expiran después de 10 minutos
     private static bool _firewallConfigurado = false; // Flag para evitar configurar múltiples veces
@@ -332,6 +335,23 @@ public class FirmaWebService : IDisposable
     }
 
     /// <summary>
+    /// Registra un token y asocia el texto de consentimiento y un título que se mostrarán
+    /// en la página de firma del móvil para que el cliente pueda leerlo antes de firmar.
+    /// </summary>
+    /// <param name="token">Token único de la sesión.</param>
+    /// <param name="textoConsentimiento">Texto completo del consentimiento (ya con placeholders sustituidos).</param>
+    /// <param name="titulo">Título a mostrar en la cabecera (p.ej. "Consentimiento RGPD").</param>
+    public void RegistrarToken(string token, string textoConsentimiento, string? titulo = null)
+    {
+        RegistrarToken(token);
+        _contextoPorToken[token] = new ContextoFirma
+        {
+            Texto = textoConsentimiento ?? string.Empty,
+            Titulo = string.IsNullOrWhiteSpace(titulo) ? "Consentimiento" : titulo!,
+        };
+    }
+
+    /// <summary>
     /// Espera a recibir una firma para un token específico.
     /// </summary>
     /// <param name="token">Token de la sesión.</param>
@@ -605,6 +625,22 @@ public class FirmaWebService : IDisposable
             // Reemplazar placeholder del token si existe
             html = html.Replace("{TOKEN}", token);
 
+            // Reemplazar texto del consentimiento y título (si están registrados)
+            string textoHtml;
+            string tituloHtml;
+            if (_contextoPorToken.TryGetValue(token, out var ctx))
+            {
+                textoHtml = WebUtility.HtmlEncode(ctx.Texto);
+                tituloHtml = WebUtility.HtmlEncode(ctx.Titulo);
+            }
+            else
+            {
+                textoHtml = string.Empty;
+                tituloHtml = "Consentimiento";
+            }
+            html = html.Replace("{CONSENT_TEXT}", textoHtml);
+            html = html.Replace("{CONSENT_TITLE}", tituloHtml);
+
             // Agregar headers CORS y otros necesarios para móviles
             response.Headers.Add("Access-Control-Allow-Origin", "*");
             response.Headers.Add("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
@@ -772,6 +808,7 @@ public class FirmaWebService : IDisposable
 
             // Eliminar el token de activos (ya se recibió la firma)
             _tokensActivos.TryRemove(token, out _);
+            _contextoPorToken.TryRemove(token, out _);
 
             // Disparar evento
             FirmaRecibida?.Invoke(this, new FirmaRecibidaEventArgs
@@ -822,6 +859,7 @@ public class FirmaWebService : IDisposable
                 {
                     _tokensActivos.TryRemove(token, out _);
                     _firmasRecibidas.TryRemove(token, out _);
+                    _contextoPorToken.TryRemove(token, out _);
                     Log.Debug("Token expirado eliminado: {Token}", token);
                 }
 
@@ -861,6 +899,15 @@ internal class FirmaRecibida
     public string Token { get; set; } = string.Empty;
     public string ImagenBase64 { get; set; } = string.Empty;
     public DateTime FechaRecepcion { get; set; }
+}
+
+/// <summary>
+/// Contexto adicional asociado a una sesión de firma (texto del consentimiento, título).
+/// </summary>
+internal class ContextoFirma
+{
+    public string Texto { get; set; } = string.Empty;
+    public string Titulo { get; set; } = "Consentimiento";
 }
 
 /// <summary>

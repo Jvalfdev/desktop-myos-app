@@ -216,7 +216,13 @@ public partial class ConsentimientoFirmaViewModel : ViewModelBase
 
             // Generar token único
             _tokenActual = FirmaWebService.GenerarTokenUnico();
-            _firmaWebService.RegistrarToken(_tokenActual);
+
+            // Pasamos el texto del consentimiento para que el móvil lo muestre íntegro.
+            // En la 2ª fase de menores el título cambia para que el tutor lo entienda.
+            var tituloMovil = EsperandoFirmaTutor
+                ? $"{TituloModal} · Firma del tutor"
+                : TituloModal;
+            _firmaWebService.RegistrarToken(_tokenActual, TextoConsentimiento, tituloMovil);
 
             // Generar URL
             UrlFirma = _firmaWebService.GenerarUrlFirma(_tokenActual);

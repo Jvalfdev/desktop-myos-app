@@ -510,9 +510,15 @@ public partial class ClientesViewModel : ViewModelBase
 
         try
         {
-            // Cargar cliente fresco desde BD con todas las relaciones
-            // (necesario porque CargarClientes usa AsNoTracking)
+            // Limpiar el ChangeTracker para evitar que entidades cacheadas (de otras consultas
+            // o de otros DbContext) impidan ver cambios recientes (p.ej. un consentimiento
+            // recién firmado y guardado en otro contexto).
+            _db.ChangeTracker.Clear();
+
+            // Cargar cliente fresco desde BD con todas las relaciones, sin trackear:
+            // así cada vez que llamemos a este método obtenemos un snapshot 100% fresco.
             var clienteFresco = await _db.Clientes
+                .AsNoTracking()
                 .Include(c => c.Trabajos)
                 .Include(c => c.Consentimientos)
                     .ThenInclude(ct => ct.Trabajo)
@@ -529,14 +535,15 @@ public partial class ClientesViewModel : ViewModelBase
             // Cargar trabajos y consentimientos
             TrabajosCliente = new ObservableCollection<Trabajo>(
                 clienteFresco.Trabajos.OrderByDescending(t => t.Fecha));
-            
+
             ConsentimientosCliente = new ObservableCollection<Consentimiento>(
                 clienteFresco.Consentimientos.OrderByDescending(c => c.FechaFirma));
 
             MostrarFicha = true;
             MostrarFormulario = false;
-            
-            Log.Information("Ficha del cliente abierta: {ClienteId}", clienteFresco.Id);
+
+            Log.Information("Ficha del cliente abierta: {ClienteId} (Consentimientos: {Count})",
+                clienteFresco.Id, ConsentimientosCliente.Count);
         }
         catch (Exception ex)
         {
