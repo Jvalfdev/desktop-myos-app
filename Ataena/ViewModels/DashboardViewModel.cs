@@ -370,6 +370,9 @@ public partial class DashboardViewModel : ViewModelBase
             MostrarEstadisticas = config.DashboardMostrarEstadisticas;
             MostrarAlertas = config.DashboardMostrarAlertas;
             MostrarAccionesRapidas = config.DashboardMostrarAccionesRapidas;
+
+            if (_mainWindowViewModel != null && !string.IsNullOrWhiteSpace(config.NombreEstudio))
+                _mainWindowViewModel.TituloVentana = config.NombreEstudio;
         }
     }
 

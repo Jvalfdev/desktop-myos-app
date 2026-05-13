@@ -56,6 +56,12 @@ public partial class MainWindowViewModel : ViewModelBase
     public BackupViewModel BackupVM { get; } = new();
 
     /// <summary>
+    /// Título de la ventana principal, actualizado con el nombre del estudio.
+    /// </summary>
+    [ObservableProperty]
+    private string _tituloVentana = "Ataena";
+
+    /// <summary>
     /// Versión actual de la aplicación (leída del ensamblado).
     /// Con sufijo prerelease tipo <c>-beta</c> en <see cref="AssemblyInformationalVersionAttribute"/> muestra "vX.Y Beta".
     /// En release estable muestra vX.Y.Z.

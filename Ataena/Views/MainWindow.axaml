@@ -9,7 +9,7 @@
         x:Class="Ataena.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Icon="/Assets/avalonia-logo.ico"
-        Title="Estudio Erzulie"
+        Title="{Binding TituloVentana}"
         Width="1200"
         Height="700"
         MinWidth="900"

@@ -6,393 +6,569 @@
              x:DataType="vm:DashboardViewModel"
              Loaded="OnLoaded">
 
-    <UserControl.Styles>
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="28,24,28,32" Spacing="24">
 
-        <Style Selector="Border.stat-card">
-            <Setter Property="Background" Value="#1a1a2e"/>
-            <Setter Property="CornerRadius" Value="14"/>
-            <Setter Property="Padding" Value="22,18"/>
-            <Setter Property="MinWidth" Value="150"/>
-        </Style>
+            <!-- ═══════════════════════════════════════════════════ -->
+            <!-- CABECERA                                            -->
+            <!-- ═══════════════════════════════════════════════════ -->
+            <Grid ColumnDefinitions="*,Auto">
+                <StackPanel Grid.Column="0" Spacing="0">
 
-        <Style Selector="Border.content-card">
-            <Setter Property="Background" Value="#1a1a2e"/>
-            <Setter Property="CornerRadius" Value="14"/>
-            <Setter Property="Padding" Value="24"/>
-        </Style>
+                    <!-- Línea de acento con degradado -->
+                    <Border Height="3" Width="52" CornerRadius="2"
+                            HorizontalAlignment="Left" Margin="0,0,0,14">
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                <GradientStop Color="#a855f7" Offset="0"/>
+                                <GradientStop Color="#f97316" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Border.Background>
+                    </Border>
 
-        <Style Selector="Border.cita-item">
-            <Setter Property="Background" Value="#22223a"/>
-            <Setter Property="CornerRadius" Value="10"/>
-            <Setter Property="Padding" Value="16,12"/>
-            <Setter Property="Margin" Value="0,0,0,8"/>
-        </Style>
-
-        <Style Selector="Border.alerta-item">
-            <Setter Property="Background" Value="#2a1e1e"/>
-            <Setter Property="CornerRadius" Value="8"/>
-            <Setter Property="Padding" Value="12,10"/>
-            <Setter Property="Margin" Value="0,0,0,6"/>
-        </Style>
-
-        <Style Selector="Button.quick-action">
-            <Setter Property="Background" Value="#22223a"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="Padding" Value="18,12"/>
-            <Setter Property="CornerRadius" Value="10"/>
-            <Setter Property="HorizontalContentAlignment" Value="Center"/>
-            <Setter Property="FontSize" Value="14"/>
-        </Style>
-        <Style Selector="Button.quick-action:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="#2e2e4e"/>
-        </Style>
-
-    </UserControl.Styles>
-
-    <ScrollViewer>
-        <StackPanel Margin="30,28,30,30" Spacing="0">
-
-            <!-- ══════════════════════════════════════════════════════════ -->
-            <!-- CABECERA                                                    -->
-            <!-- ══════════════════════════════════════════════════════════ -->
-            <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,26">
-                <StackPanel Grid.Column="0">
                     <TextBlock Text="{Binding Saludo}"
-                               FontSize="30"
-                               FontWeight="Bold"
-                               Foreground="White"/>
+                               FontSize="34" FontWeight="Bold" Foreground="White"/>
                     <TextBlock Text="{Binding NombreEstudio}"
-                               FontSize="14"
-                               Foreground="#9999bb"
-                               Margin="0,4,0,0"/>
+                               FontSize="14" Foreground="#475569" Margin="0,6,0,0"/>
                 </StackPanel>
-                <Border Grid.Column="1"
-                        Background="#1a1a2e"
-                        CornerRadius="10"
-                        Padding="16,10"
-                        VerticalAlignment="Center">
-                    <TextBlock Text="{Binding FechaHoy}"
-                               FontSize="13"
-                               Foreground="#9999bb"/>
+
+                <!-- Pill de fecha con borde degradado -->
+                <Border Grid.Column="1" VerticalAlignment="Top"
+                        CornerRadius="20" Padding="1">
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                            <GradientStop Color="#a855f7" Offset="0"/>
+                            <GradientStop Color="#f97316" Offset="1"/>
+                        </LinearGradientBrush>
+                    </Border.Background>
+                    <Border CornerRadius="19" Padding="16,8">
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                <GradientStop Color="#130c22" Offset="0"/>
+                                <GradientStop Color="#1c1008" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Border.Background>
+                        <TextBlock Text="{Binding FechaHoy}"
+                                   FontSize="12" Foreground="#94a3b8"/>
+                    </Border>
                 </Border>
             </Grid>
 
-            <!-- ══════════════════════════════════════════════════════════ -->
-            <!-- ACCIONES RÁPIDAS                                            -->
-            <!-- ══════════════════════════════════════════════════════════ -->
-            <StackPanel Orientation="Horizontal"
-                        Spacing="10"
-                        Margin="0,0,0,24"
+            <!-- ═══════════════════════════════════════════════════ -->
+            <!-- ACCIONES RÁPIDAS                                    -->
+            <!-- ═══════════════════════════════════════════════════ -->
+            <StackPanel Orientation="Horizontal" Spacing="10"
                         IsVisible="{Binding MostrarAccionesRapidas}">
-                <Button Classes="quick-action"
-                        MinWidth="175"
+
+                <!-- Nuevo cliente -->
+                <Button Classes="quick-action" Padding="16,11" CornerRadius="12"
                         Command="{Binding NuevoClienteRapidoCommand}">
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <TextBlock Text="👤" FontSize="15"/>
-                        <TextBlock Text="Nuevo cliente" VerticalAlignment="Center"/>
+                    <Button.BorderBrush>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                            <GradientStop Color="#a855f7" Offset="0"/>
+                            <GradientStop Color="#6366f1" Offset="1"/>
+                        </LinearGradientBrush>
+                    </Button.BorderBrush>
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <Border Width="28" Height="28" CornerRadius="8" Background="#a855f725">
+                            <TextBlock Text="👤" FontSize="14"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <TextBlock Text="Nuevo cliente" FontSize="13" FontWeight="SemiBold"
+                                   Foreground="#e2e8f0" VerticalAlignment="Center"/>
                     </StackPanel>
                 </Button>
-                <Button Classes="quick-action"
-                        MinWidth="175"
+
+                <!-- Nueva cita -->
+                <Button Classes="quick-action" Padding="16,11" CornerRadius="12"
                         Command="{Binding NuevaCitaRapidaCommand}">
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <TextBlock Text="📅" FontSize="15"/>
-                        <TextBlock Text="Nueva cita" VerticalAlignment="Center"/>
+                    <Button.BorderBrush>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                            <GradientStop Color="#10b981" Offset="0"/>
+                            <GradientStop Color="#06b6d4" Offset="1"/>
+                        </LinearGradientBrush>
+                    </Button.BorderBrush>
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <Border Width="28" Height="28" CornerRadius="8" Background="#10b98125">
+                            <TextBlock Text="📅" FontSize="14"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <TextBlock Text="Nueva cita" FontSize="13" FontWeight="SemiBold"
+                                   Foreground="#e2e8f0" VerticalAlignment="Center"/>
                     </StackPanel>
                 </Button>
-                <Button Classes="quick-action"
-                        MinWidth="175"
+
+                <!-- Nuevo trabajo -->
+                <Button Classes="quick-action" Padding="16,11" CornerRadius="12"
                         Command="{Binding NuevoTrabajoRapidoCommand}">
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <TextBlock Text="🎨" FontSize="15"/>
-                        <TextBlock Text="Nuevo trabajo" VerticalAlignment="Center"/>
+                    <Button.BorderBrush>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                            <GradientStop Color="#f97316" Offset="0"/>
+                            <GradientStop Color="#f59e0b" Offset="1"/>
+                        </LinearGradientBrush>
+                    </Button.BorderBrush>
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <Border Width="28" Height="28" CornerRadius="8" Background="#f9731625">
+                            <TextBlock Text="🎨" FontSize="14"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <TextBlock Text="Nuevo trabajo" FontSize="13" FontWeight="SemiBold"
+                                   Foreground="#e2e8f0" VerticalAlignment="Center"/>
                     </StackPanel>
                 </Button>
+
             </StackPanel>
 
-            <!-- ══════════════════════════════════════════════════════════ -->
-            <!-- TARJETAS DE ESTADÍSTICAS                                    -->
-            <!-- ══════════════════════════════════════════════════════════ -->
-            <StackPanel Orientation="Horizontal"
-                        Spacing="14"
-                        Margin="0,0,0,24"
+            <!-- ═══════════════════════════════════════════════════ -->
+            <!-- TARJETAS DE ESTADÍSTICAS                            -->
+            <!-- ═══════════════════════════════════════════════════ -->
+            <StackPanel Orientation="Horizontal" Spacing="14"
                         IsVisible="{Binding MostrarEstadisticas}">
 
-                <!-- Clientes -->
-                <Border Classes="stat-card">
-                    <Grid RowDefinitions="Auto,*,Auto">
-                        <!-- Barra de acento superior -->
-                        <Border Grid.Row="0"
-                                Height="3"
-                                CornerRadius="2"
-                                Background="#7c6cf0"
-                                HorizontalAlignment="Left"
-                                Width="36"
-                                Margin="0,0,0,14"/>
-                        <TextBlock Grid.Row="1"
-                                   Text="{Binding TotalClientes}"
-                                   FontSize="40"
-                                   FontWeight="Bold"
-                                   Foreground="#7c6cf0"/>
-                        <TextBlock Grid.Row="2"
-                                   Text="Clientes activos"
-                                   FontSize="12"
-                                   Foreground="#9999bb"
-                                   Margin="0,6,0,0"/>
-                    </Grid>
-                </Border>
-
-                <!-- Citas hoy -->
-                <Border Classes="stat-card">
-                    <Grid RowDefinitions="Auto,*,Auto">
-                        <Border Grid.Row="0"
-                                Height="3"
-                                CornerRadius="2"
-                                Background="#4ade80"
-                                HorizontalAlignment="Left"
-                                Width="36"
-                                Margin="0,0,0,14"/>
-                        <TextBlock Grid.Row="1"
-                                   Text="{Binding CitasHoyCount}"
-                                   FontSize="40"
-                                   FontWeight="Bold"
-                                   Foreground="#4ade80"/>
-                        <TextBlock Grid.Row="2"
-                                   Text="Citas hoy"
-                                   FontSize="12"
-                                   Foreground="#9999bb"
-                                   Margin="0,6,0,0"/>
-                    </Grid>
-                </Border>
-
-                <!-- Por confirmar -->
-                <Border Classes="stat-card">
-                    <Grid RowDefinitions="Auto,*,Auto">
-                        <Border Grid.Row="0"
-                                Height="3"
-                                CornerRadius="2"
-                                Background="#f87171"
-                                HorizontalAlignment="Left"
-                                Width="36"
-                                Margin="0,0,0,14"/>
-                        <TextBlock Grid.Row="1"
-                                   Text="{Binding CitasPendientesConfirmar}"
-                                   FontSize="40"
-                                   FontWeight="Bold"
-                                   Foreground="#f87171"/>
-                        <TextBlock Grid.Row="2"
-                                   Text="Por confirmar"
-                                   FontSize="12"
-                                   Foreground="#9999bb"
-                                   Margin="0,6,0,0"/>
-                    </Grid>
-                </Border>
-
-                <!-- Económica (opcional) -->
-                <Border Classes="stat-card"
-                        IsVisible="{Binding MostrarEconomia}">
-                    <Grid RowDefinitions="Auto,*,Auto">
-                        <Border Grid.Row="0"
-                                Height="3"
-                                CornerRadius="2"
-                                Background="#fbbf24"
-                                HorizontalAlignment="Left"
-                                Width="36"
-                                Margin="0,0,0,14"/>
-                        <StackPanel Grid.Row="1" Orientation="Horizontal" VerticalAlignment="Bottom">
-                            <TextBlock Text="{Binding IngresosSemana, StringFormat='{}{0:N0}'}"
-                                       FontSize="38"
-                                       FontWeight="Bold"
-                                       Foreground="#fbbf24"/>
-                            <TextBlock Text="€"
-                                       FontSize="22"
-                                       FontWeight="Bold"
-                                       Foreground="#fbbf24"
-                                       VerticalAlignment="Bottom"
-                                       Margin="4,0,0,5"/>
+                <!-- ── Clientes activos ── -->
+                <Border CornerRadius="16" Padding="1" MinWidth="190">
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                            <GradientStop Color="#a855f7" Offset="0"/>
+                            <GradientStop Color="#6366f1" Offset="1"/>
+                        </LinearGradientBrush>
+                    </Border.Background>
+                    <Border CornerRadius="15" Padding="22,20">
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0,1" EndPoint="1,0">
+                                <GradientStop Color="#0d0a1f" Offset="0"/>
+                                <GradientStop Color="#0a0d1f" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Border.Background>
+                        <StackPanel Spacing="14">
+                            <Border Width="42" Height="42" CornerRadius="12" HorizontalAlignment="Left">
+                                <Border.Background>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                        <GradientStop Color="#a855f735" Offset="0"/>
+                                        <GradientStop Color="#6366f125" Offset="1"/>
+                                    </LinearGradientBrush>
+                                </Border.Background>
+                                <TextBlock Text="👥" FontSize="20"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <TextBlock Text="{Binding TotalClientes}"
+                                       FontSize="46" FontWeight="Bold" Foreground="#a855f7"/>
+                            <StackPanel Spacing="2">
+                                <TextBlock Text="Clientes activos"
+                                           FontSize="13" Foreground="#94a3b8" FontWeight="Medium"/>
+                                <TextBlock Text="en el sistema"
+                                           FontSize="11" Foreground="#334155"/>
+                            </StackPanel>
                         </StackPanel>
-                        <TextBlock Grid.Row="2"
-                                   Text="Esta semana"
-                                   FontSize="12"
-                                   Foreground="#9999bb"
-                                   Margin="0,6,0,0"/>
-                    </Grid>
+                    </Border>
+                </Border>
+
+                <!-- ── Citas hoy ── -->
+                <Border CornerRadius="16" Padding="1" MinWidth="190">
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                            <GradientStop Color="#10b981" Offset="0"/>
+                            <GradientStop Color="#06b6d4" Offset="1"/>
+                        </LinearGradientBrush>
+                    </Border.Background>
+                    <Border CornerRadius="15" Padding="22,20">
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0,1" EndPoint="1,0">
+                                <GradientStop Color="#081a14" Offset="0"/>
+                                <GradientStop Color="#081820" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Border.Background>
+                        <StackPanel Spacing="14">
+                            <Border Width="42" Height="42" CornerRadius="12" HorizontalAlignment="Left">
+                                <Border.Background>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                        <GradientStop Color="#10b98135" Offset="0"/>
+                                        <GradientStop Color="#06b6d425" Offset="1"/>
+                                    </LinearGradientBrush>
+                                </Border.Background>
+                                <TextBlock Text="📅" FontSize="20"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <TextBlock Text="{Binding CitasHoyCount}"
+                                       FontSize="46" FontWeight="Bold" Foreground="#10b981"/>
+                            <StackPanel Spacing="2">
+                                <TextBlock Text="Citas de hoy"
+                                           FontSize="13" Foreground="#94a3b8" FontWeight="Medium"/>
+                                <TextBlock Text="programadas"
+                                           FontSize="11" Foreground="#334155"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                </Border>
+
+                <!-- ── Por confirmar ── -->
+                <Border CornerRadius="16" Padding="1" MinWidth="190">
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                            <GradientStop Color="#f97316" Offset="0"/>
+                            <GradientStop Color="#ef4444" Offset="1"/>
+                        </LinearGradientBrush>
+                    </Border.Background>
+                    <Border CornerRadius="15" Padding="22,20">
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0,1" EndPoint="1,0">
+                                <GradientStop Color="#1a0e08" Offset="0"/>
+                                <GradientStop Color="#1a0808" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Border.Background>
+                        <StackPanel Spacing="14">
+                            <Border Width="42" Height="42" CornerRadius="12" HorizontalAlignment="Left">
+                                <Border.Background>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                        <GradientStop Color="#f9731635" Offset="0"/>
+                                        <GradientStop Color="#ef444425" Offset="1"/>
+                                    </LinearGradientBrush>
+                                </Border.Background>
+                                <TextBlock Text="⏰" FontSize="20"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <TextBlock Text="{Binding CitasPendientesConfirmar}"
+                                       FontSize="46" FontWeight="Bold" Foreground="#f97316"/>
+                            <StackPanel Spacing="2">
+                                <TextBlock Text="Sin confirmar"
+                                           FontSize="13" Foreground="#94a3b8" FontWeight="Medium"/>
+                                <TextBlock Text="próximos 7 días"
+                                           FontSize="11" Foreground="#334155"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                </Border>
+
+                <!-- ── Ingresos semana (opcional) ── -->
+                <Border CornerRadius="16" Padding="1" MinWidth="190"
+                        IsVisible="{Binding MostrarEconomia}">
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                            <GradientStop Color="#fbbf24" Offset="0"/>
+                            <GradientStop Color="#f59e0b" Offset="1"/>
+                        </LinearGradientBrush>
+                    </Border.Background>
+                    <Border CornerRadius="15" Padding="22,20">
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0,1" EndPoint="1,0">
+                                <GradientStop Color="#1a1408" Offset="0"/>
+                                <GradientStop Color="#1a1208" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Border.Background>
+                        <StackPanel Spacing="14">
+                            <Border Width="42" Height="42" CornerRadius="12" HorizontalAlignment="Left">
+                                <Border.Background>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                        <GradientStop Color="#fbbf2435" Offset="0"/>
+                                        <GradientStop Color="#f59e0b25" Offset="1"/>
+                                    </LinearGradientBrush>
+                                </Border.Background>
+                                <TextBlock Text="💰" FontSize="20"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <StackPanel Orientation="Horizontal" Spacing="3" VerticalAlignment="Bottom">
+                                <TextBlock Text="{Binding IngresosSemana, StringFormat='{}{0:N0}'}"
+                                           FontSize="42" FontWeight="Bold" Foreground="#fbbf24"/>
+                                <TextBlock Text="€" FontSize="22" FontWeight="Bold"
+                                           Foreground="#fbbf24" VerticalAlignment="Bottom"
+                                           Margin="2,0,0,6"/>
+                            </StackPanel>
+                            <StackPanel Spacing="2">
+                                <TextBlock Text="Esta semana"
+                                           FontSize="13" Foreground="#94a3b8" FontWeight="Medium"/>
+                                <TextBlock Text="ingresos totales"
+                                           FontSize="11" Foreground="#334155"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
                 </Border>
 
             </StackPanel>
 
-            <!-- ══════════════════════════════════════════════════════════ -->
-            <!-- CONTENIDO PRINCIPAL: CITAS + ALERTAS                       -->
-            <!-- ══════════════════════════════════════════════════════════ -->
-            <Grid ColumnDefinitions="2*,*">
-                <Grid.Styles>
-                    <Style Selector="Grid">
-                        <Setter Property="MinHeight" Value="300"/>
-                    </Style>
-                </Grid.Styles>
+            <!-- ═══════════════════════════════════════════════════ -->
+            <!-- CONTENIDO PRINCIPAL: CITAS + ALERTAS               -->
+            <!-- ═══════════════════════════════════════════════════ -->
+            <Grid ColumnDefinitions="*,Auto" MinHeight="340">
 
-                <!-- Citas de hoy -->
-                <Border Classes="content-card"
-                        Grid.Column="0"
-                        Margin="0,0,14,0">
-                    <DockPanel>
-                        <!-- Cabecera de la sección -->
-                        <Grid DockPanel.Dock="Top"
-                              ColumnDefinitions="*,Auto"
-                              Margin="0,0,0,18">
-                            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10">
-                                <TextBlock Text="📅"
-                                           FontSize="18"
-                                           VerticalAlignment="Center"/>
-                                <TextBlock Text="Citas de hoy"
-                                           FontSize="17"
-                                           FontWeight="SemiBold"
-                                           VerticalAlignment="Center"/>
-                            </StackPanel>
-                            <Border Grid.Column="1"
-                                    Background="#22223a"
-                                    CornerRadius="20"
-                                    Padding="12,4"
-                                    VerticalAlignment="Center">
-                                <TextBlock Text="{Binding CitasHoyCount}"
-                                           FontSize="13"
-                                           Foreground="#4ade80"
-                                           FontWeight="SemiBold"/>
+                <!-- ── Panel Citas de hoy ── -->
+                <Border Grid.Column="0" Margin="0,0,16,0"
+                        CornerRadius="16" Padding="1">
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                            <GradientStop Color="#1e293b" Offset="0"/>
+                            <GradientStop Color="#0f172a" Offset="1"/>
+                        </LinearGradientBrush>
+                    </Border.Background>
+                    <Border CornerRadius="15" Padding="24">
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                <GradientStop Color="#080d1a" Offset="0"/>
+                                <GradientStop Color="#060a14" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Border.Background>
+                        <DockPanel>
+
+                            <!-- Cabecera -->
+                            <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="0,0,0,6">
+                                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="14">
+                                    <Border Width="38" Height="38" CornerRadius="10">
+                                        <Border.Background>
+                                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                                <GradientStop Color="#a855f730" Offset="0"/>
+                                                <GradientStop Color="#6366f120" Offset="1"/>
+                                            </LinearGradientBrush>
+                                        </Border.Background>
+                                        <TextBlock Text="📅" FontSize="17"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="Citas de hoy"
+                                                   FontSize="16" FontWeight="Bold" Foreground="White"/>
+                                        <TextBlock Text="{Binding FechaHoy}"
+                                                   FontSize="11" Foreground="#334155" Margin="0,2,0,0"/>
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <!-- Badge con el número de citas -->
+                                <Border Grid.Column="1" CornerRadius="20" Padding="1"
+                                        VerticalAlignment="Center">
+                                    <Border.Background>
+                                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                            <GradientStop Color="#a855f7" Offset="0"/>
+                                            <GradientStop Color="#6366f1" Offset="1"/>
+                                        </LinearGradientBrush>
+                                    </Border.Background>
+                                    <Border CornerRadius="19" Padding="14,5">
+                                        <Border.Background>
+                                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                                <GradientStop Color="#1a0f2e" Offset="0"/>
+                                                <GradientStop Color="#0f1228" Offset="1"/>
+                                            </LinearGradientBrush>
+                                        </Border.Background>
+                                        <StackPanel Orientation="Horizontal" Spacing="5">
+                                            <TextBlock Text="{Binding CitasHoyCount}"
+                                                       FontSize="13" FontWeight="Bold" Foreground="#a855f7"/>
+                                            <TextBlock Text="citas"
+                                                       FontSize="12" Foreground="#4c1d95"
+                                                       VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Border>
+                                </Border>
+                            </Grid>
+
+                            <!-- Separador degradado -->
+                            <Border DockPanel.Dock="Top" Height="1" Margin="0,14,0,20">
+                                <Border.Background>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                        <GradientStop Color="#a855f740" Offset="0"/>
+                                        <GradientStop Color="#6366f110" Offset="0.6"/>
+                                        <GradientStop Color="#00000000" Offset="1"/>
+                                    </LinearGradientBrush>
+                                </Border.Background>
                             </Border>
-                        </Grid>
 
-                        <!-- Sin citas -->
-                        <StackPanel IsVisible="{Binding !CitasHoy.Count}"
-                                    HorizontalAlignment="Center"
-                                    VerticalAlignment="Center"
-                                    Margin="0,30,0,0">
-                            <TextBlock Text="🎉"
-                                       FontSize="44"
-                                       HorizontalAlignment="Center"/>
-                            <TextBlock Text="Sin citas para hoy"
-                                       FontSize="15"
-                                       Foreground="#9999bb"
-                                       HorizontalAlignment="Center"
-                                       Margin="0,10,0,0"/>
-                        </StackPanel>
+                            <!-- Estado vacío -->
+                            <StackPanel DockPanel.Dock="Top"
+                                        IsVisible="{Binding !CitasHoy.Count}"
+                                        HorizontalAlignment="Center"
+                                        Margin="0,48,0,0" Spacing="12">
+                                <TextBlock Text="🗓️" FontSize="52"
+                                           HorizontalAlignment="Center"/>
+                                <TextBlock Text="Sin citas para hoy"
+                                           FontSize="15" FontWeight="SemiBold"
+                                           Foreground="#334155" HorizontalAlignment="Center"/>
+                                <TextBlock Text="¡Día libre!"
+                                           FontSize="12" Foreground="#1e293b"
+                                           HorizontalAlignment="Center"/>
+                            </StackPanel>
 
-                        <!-- Lista de citas -->
-                        <ScrollViewer IsVisible="{Binding CitasHoy.Count}">
-                            <ItemsControl ItemsSource="{Binding CitasHoy}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate x:DataType="models:Cita">
-                                        <Border Classes="cita-item">
-                                            <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                            <!-- Lista de citas con layout de timeline -->
+                            <ScrollViewer IsVisible="{Binding CitasHoy.Count}"
+                                          VerticalScrollBarVisibility="Auto">
+                                <ItemsControl ItemsSource="{Binding CitasHoy}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="models:Cita">
+                                            <Grid ColumnDefinitions="70,16,*" Margin="0,0,0,14">
 
-                                                <!-- Indicador hora -->
-                                                <Border Grid.Column="0"
-                                                        Background="#2e2e4e"
-                                                        CornerRadius="8"
-                                                        Padding="10,6"
-                                                        VerticalAlignment="Center"
-                                                        Margin="0,0,14,0">
+                                                <!-- Hora + duración -->
+                                                <StackPanel Grid.Column="0"
+                                                            VerticalAlignment="Top"
+                                                            HorizontalAlignment="Right"
+                                                            Margin="0,10,0,0" Spacing="3">
                                                     <TextBlock Text="{Binding HoraInicio, StringFormat='{}{0:hh\\:mm}'}"
-                                                               FontSize="16"
-                                                               FontWeight="Bold"
-                                                               Foreground="#7c6cf0"/>
-                                                </Border>
-
-                                                <!-- Cliente y descripción -->
-                                                <StackPanel Grid.Column="1"
-                                                            VerticalAlignment="Center">
-                                                    <TextBlock Text="{Binding Cliente.NombreCompleto}"
-                                                               FontSize="15"
-                                                               FontWeight="SemiBold"
-                                                               Foreground="White"/>
-                                                    <TextBlock Text="{Binding Descripcion}"
-                                                               FontSize="12"
-                                                               Foreground="#9999bb"
-                                                               Margin="0,2,0,0"
-                                                               TextTrimming="CharacterEllipsis"/>
+                                                               FontSize="15" FontWeight="Bold"
+                                                               Foreground="#a855f7"
+                                                               HorizontalAlignment="Right"/>
+                                                    <TextBlock Text="{Binding DuracionMinutos, StringFormat='{}{0}m'}"
+                                                               FontSize="11" Foreground="#334155"
+                                                               HorizontalAlignment="Right"/>
                                                 </StackPanel>
 
-                                                <!-- Duración -->
+                                                <!-- Conector de timeline (punto + línea) -->
+                                                <StackPanel Grid.Column="1"
+                                                            HorizontalAlignment="Center" Spacing="0">
+                                                    <Border Width="10" Height="10" CornerRadius="5"
+                                                            Margin="0,12,0,0">
+                                                        <Border.Background>
+                                                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                                                <GradientStop Color="#a855f7" Offset="0"/>
+                                                                <GradientStop Color="#6366f1" Offset="1"/>
+                                                            </LinearGradientBrush>
+                                                        </Border.Background>
+                                                    </Border>
+                                                    <Border Width="1" MinHeight="30" HorizontalAlignment="Center">
+                                                        <Border.Background>
+                                                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                                                <GradientStop Color="#a855f730" Offset="0"/>
+                                                                <GradientStop Color="#00000000" Offset="1"/>
+                                                            </LinearGradientBrush>
+                                                        </Border.Background>
+                                                    </Border>
+                                                </StackPanel>
+
+                                                <!-- Tarjeta de cita -->
                                                 <Border Grid.Column="2"
-                                                        Background="#1e1e30"
-                                                        CornerRadius="6"
-                                                        Padding="8,4"
-                                                        VerticalAlignment="Center"
-                                                        Margin="0,0,12,0">
-                                                    <TextBlock Text="{Binding DuracionMinutos, StringFormat='{}{0} min'}"
-                                                               FontSize="12"
-                                                               Foreground="#9999bb"/>
+                                                        Background="#0f172a"
+                                                        BorderBrush="#1e293b"
+                                                        BorderThickness="1"
+                                                        CornerRadius="12" Padding="16,12"
+                                                        Margin="0,6,0,0">
+                                                    <Grid ColumnDefinitions="*,Auto">
+                                                        <StackPanel Grid.Column="0" Spacing="5">
+                                                            <TextBlock Text="{Binding Cliente.NombreCompleto}"
+                                                                       FontSize="14" FontWeight="SemiBold"
+                                                                       Foreground="#e2e8f0"/>
+                                                            <TextBlock Text="{Binding Descripcion}"
+                                                                       FontSize="12" Foreground="#475569"
+                                                                       TextTrimming="CharacterEllipsis"/>
+                                                        </StackPanel>
+
+                                                        <!-- Indicador de estado -->
+                                                        <Border Grid.Column="1"
+                                                                Width="8" Height="8" CornerRadius="4"
+                                                                VerticalAlignment="Center" Margin="12,0,0,0">
+                                                            <Border.Background>
+                                                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                                                    <GradientStop Color="#10b981" Offset="0"/>
+                                                                    <GradientStop Color="#06b6d4" Offset="1"/>
+                                                                </LinearGradientBrush>
+                                                            </Border.Background>
+                                                        </Border>
+                                                    </Grid>
                                                 </Border>
 
-                                                <!-- Dot de estado -->
-                                                <Border Grid.Column="3"
-                                                        Width="10"
-                                                        Height="10"
-                                                        CornerRadius="5"
-                                                        VerticalAlignment="Center"
-                                                        Background="#4ade80"/>
-
                                             </Grid>
-                                        </Border>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </ScrollViewer>
-                    </DockPanel>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+
+                        </DockPanel>
+                    </Border>
                 </Border>
 
-                <!-- Alertas / Pendientes -->
-                <Border Classes="content-card"
-                        Grid.Column="1"
-                        IsVisible="{Binding MostrarAlertas}">
-                    <DockPanel>
-                        <StackPanel DockPanel.Dock="Top"
-                                    Orientation="Horizontal"
-                                    Spacing="10"
-                                    Margin="0,0,0,18">
-                            <TextBlock Text="⚠️"
-                                       FontSize="18"
-                                       VerticalAlignment="Center"/>
-                            <TextBlock Text="Pendientes"
-                                       FontSize="17"
-                                       FontWeight="SemiBold"
-                                       VerticalAlignment="Center"/>
-                        </StackPanel>
+                <!-- ── Panel Alertas / Pendientes ── -->
+                <Border Grid.Column="1" Width="310"
+                        IsVisible="{Binding MostrarAlertas}"
+                        CornerRadius="16" Padding="1">
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                            <GradientStop Color="#1e293b" Offset="0"/>
+                            <GradientStop Color="#0f172a" Offset="1"/>
+                        </LinearGradientBrush>
+                    </Border.Background>
+                    <Border CornerRadius="15" Padding="24">
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                <GradientStop Color="#080d1a" Offset="0"/>
+                                <GradientStop Color="#060a14" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Border.Background>
+                        <DockPanel>
 
-                        <!-- Sin alertas -->
-                        <StackPanel IsVisible="{Binding !Alertas.Count}"
-                                    HorizontalAlignment="Center"
-                                    VerticalAlignment="Center"
-                                    Margin="0,20,0,0">
-                            <TextBlock Text="✅"
-                                       FontSize="44"
-                                       HorizontalAlignment="Center"/>
-                            <TextBlock Text="Todo al día"
-                                       FontSize="15"
-                                       Foreground="#9999bb"
-                                       HorizontalAlignment="Center"
-                                       Margin="0,10,0,0"/>
-                        </StackPanel>
+                            <!-- Cabecera -->
+                            <StackPanel DockPanel.Dock="Top"
+                                        Orientation="Horizontal" Spacing="14"
+                                        Margin="0,0,0,6">
+                                <Border Width="38" Height="38" CornerRadius="10">
+                                    <Border.Background>
+                                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                            <GradientStop Color="#f9731630" Offset="0"/>
+                                            <GradientStop Color="#ef444420" Offset="1"/>
+                                        </LinearGradientBrush>
+                                    </Border.Background>
+                                    <TextBlock Text="⚡" FontSize="17"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="Pendientes"
+                                               FontSize="16" FontWeight="Bold" Foreground="White"/>
+                                    <TextBlock Text="requieren atención"
+                                               FontSize="11" Foreground="#334155" Margin="0,2,0,0"/>
+                                </StackPanel>
+                            </StackPanel>
 
-                        <!-- Lista de alertas -->
-                        <ScrollViewer IsVisible="{Binding Alertas.Count}">
-                            <ItemsControl ItemsSource="{Binding Alertas}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <Border Classes="alerta-item">
-                                            <TextBlock Text="{Binding}"
-                                                       TextWrapping="Wrap"
-                                                       FontSize="13"
-                                                       Foreground="#f87171"/>
-                                        </Border>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </ScrollViewer>
-                    </DockPanel>
+                            <!-- Separador degradado -->
+                            <Border DockPanel.Dock="Top" Height="1" Margin="0,14,0,20">
+                                <Border.Background>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                        <GradientStop Color="#f9731640" Offset="0"/>
+                                        <GradientStop Color="#ef444410" Offset="0.6"/>
+                                        <GradientStop Color="#00000000" Offset="1"/>
+                                    </LinearGradientBrush>
+                                </Border.Background>
+                            </Border>
+
+                            <!-- Estado vacío -->
+                            <StackPanel DockPanel.Dock="Top"
+                                        IsVisible="{Binding !Alertas.Count}"
+                                        HorizontalAlignment="Center"
+                                        Margin="0,42,0,0" Spacing="12">
+                                <TextBlock Text="✨" FontSize="48"
+                                           HorizontalAlignment="Center"/>
+                                <TextBlock Text="Todo en orden"
+                                           FontSize="15" FontWeight="SemiBold"
+                                           Foreground="#334155"
+                                           HorizontalAlignment="Center"/>
+                                <TextBlock Text="No hay pendientes"
+                                           FontSize="12" Foreground="#1e293b"
+                                           HorizontalAlignment="Center"/>
+                            </StackPanel>
+
+                            <!-- Lista de alertas -->
+                            <ScrollViewer IsVisible="{Binding Alertas.Count}"
+                                          VerticalScrollBarVisibility="Auto">
+                                <ItemsControl ItemsSource="{Binding Alertas}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border CornerRadius="12" Padding="1" Margin="0,0,0,10">
+                                                <Border.Background>
+                                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                                        <GradientStop Color="#f9731655" Offset="0"/>
+                                                        <GradientStop Color="#ef444435" Offset="1"/>
+                                                    </LinearGradientBrush>
+                                                </Border.Background>
+                                                <Border CornerRadius="11" Padding="14,12">
+                                                    <Border.Background>
+                                                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                                            <GradientStop Color="#150a08" Offset="0"/>
+                                                            <GradientStop Color="#120808" Offset="1"/>
+                                                        </LinearGradientBrush>
+                                                    </Border.Background>
+                                                    <TextBlock Text="{Binding}"
+                                                               TextWrapping="Wrap"
+                                                               FontSize="13" Foreground="#cbd5e1"
+                                                               LineHeight="20"/>
+                                                </Border>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+
+                        </DockPanel>
+                    </Border>
                 </Border>
-
-                <!-- Si alertas desactivadas, citas ocupa todo el ancho -->
-                <!-- (Se gestiona con el Grid.ColumnDefinitions dinámico vía IsVisible) -->
 
             </Grid>
 
