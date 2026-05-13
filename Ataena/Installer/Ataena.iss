@@ -2,7 +2,7 @@
 ; Crea un instalador con asistente completo (Bienvenida, elegir carpeta, accesos directos, etc.)
 
 #define MyAppName "Ataena CRM"
-#define MyAppVersion "0.5.2"
+#define MyAppVersion "0.5.3"
 #define MyAppPublisher "Ataena"
 #define MyAppURL "https://github.com/Jvalfdev/desktop-myos-app"
 #define MyAppExeName "Ataena.exe"
@@ -62,7 +62,7 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: de
 Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: quicklaunchicon
 
 [Run]
-Filename: "{app}\{#MyAppExeName}"; Description: "Abrir {#MyAppName}"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\{#MyAppExeName}"; Description: "Abrir {#MyAppName}"; Flags: nowait postinstall
 
 [UninstallDelete]
 ; No borrar datos del usuario (%LocalAppData%\Ataena\ contiene data.db, ficheros, etc.)
