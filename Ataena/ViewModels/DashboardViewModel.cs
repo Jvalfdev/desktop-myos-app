@@ -85,23 +85,30 @@ public partial class DashboardViewModel : ViewModelBase
 
     #region Propiedades - Interfaz de Usuario
 
-    /// <summary>
-    /// Saludo que cambia según la hora del día.
-    /// </summary>
     [ObservableProperty]
     private string _saludo = "Buenos días";
 
-    /// <summary>
-    /// Fecha actual formateada para mostrar en la UI.
-    /// </summary>
     [ObservableProperty]
     private string _fechaHoy = DateTime.Now.ToString("dddd, d MMMM yyyy");
 
-    /// <summary>
-    /// Nombre del estudio (desde configuración).
-    /// </summary>
     [ObservableProperty]
     private string _nombreEstudio = "Ataena";
+
+    #endregion
+
+    #region Propiedades - Visibilidad Dashboard
+
+    [ObservableProperty]
+    private bool _mostrarEconomia = false;
+
+    [ObservableProperty]
+    private bool _mostrarEstadisticas = true;
+
+    [ObservableProperty]
+    private bool _mostrarAlertas = true;
+
+    [ObservableProperty]
+    private bool _mostrarAccionesRapidas = true;
 
     #endregion
 
@@ -351,7 +358,7 @@ public partial class DashboardViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Carga la configuración del estudio.
+    /// Carga la configuración del estudio y las preferencias del dashboard.
     /// </summary>
     private async Task CargarConfiguracion()
     {
@@ -359,6 +366,10 @@ public partial class DashboardViewModel : ViewModelBase
         if (config != null)
         {
             NombreEstudio = config.NombreEstudio;
+            MostrarEconomia = config.DashboardMostrarEconomia;
+            MostrarEstadisticas = config.DashboardMostrarEstadisticas;
+            MostrarAlertas = config.DashboardMostrarAlertas;
+            MostrarAccionesRapidas = config.DashboardMostrarAccionesRapidas;
         }
     }
 

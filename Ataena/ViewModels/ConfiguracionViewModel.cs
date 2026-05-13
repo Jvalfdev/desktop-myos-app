@@ -62,6 +62,19 @@ public partial class ConfiguracionViewModel : ViewModelBase
     [ObservableProperty]
     private string _idiomaApp = "es";
 
+    // Dashboard
+    [ObservableProperty]
+    private bool _dashboardMostrarEconomia = false;
+
+    [ObservableProperty]
+    private bool _dashboardMostrarEstadisticas = true;
+
+    [ObservableProperty]
+    private bool _dashboardMostrarAlertas = true;
+
+    [ObservableProperty]
+    private bool _dashboardMostrarAccionesRapidas = true;
+
     [ObservableProperty]
     private bool _cargando;
 
@@ -116,8 +129,11 @@ public partial class ConfiguracionViewModel : ViewModelBase
             TemaOscuro = cfg.TemaOscuro;
             IdiomaApp = cfg.IdiomaApp;
             LogoPath = cfg.LogoPath;
+            DashboardMostrarEconomia = cfg.DashboardMostrarEconomia;
+            DashboardMostrarEstadisticas = cfg.DashboardMostrarEstadisticas;
+            DashboardMostrarAlertas = cfg.DashboardMostrarAlertas;
+            DashboardMostrarAccionesRapidas = cfg.DashboardMostrarAccionesRapidas;
 
-            // Cargar preview del logo
             CargarLogoPreview();
         }
         catch (Exception ex)
@@ -162,6 +178,10 @@ public partial class ConfiguracionViewModel : ViewModelBase
             cfg.TemaOscuro = TemaOscuro;
             cfg.IdiomaApp = string.IsNullOrWhiteSpace(IdiomaApp) ? "es" : IdiomaApp.Trim();
             cfg.LogoPath = LogoPath;
+            cfg.DashboardMostrarEconomia = DashboardMostrarEconomia;
+            cfg.DashboardMostrarEstadisticas = DashboardMostrarEstadisticas;
+            cfg.DashboardMostrarAlertas = DashboardMostrarAlertas;
+            cfg.DashboardMostrarAccionesRapidas = DashboardMostrarAccionesRapidas;
 
             await _db.SaveChangesAsync();
             MensajeOk = "Configuración guardada correctamente.";

@@ -159,6 +159,31 @@ public class Configuracion
 
     #endregion
 
+    #region Preferencias del Dashboard
+
+    /// <summary>
+    /// Muestra la tarjeta de ingresos económicos en el Dashboard.
+    /// Desactivar si no se quiere hacer seguimiento económico.
+    /// </summary>
+    public bool DashboardMostrarEconomia { get; set; } = false;
+
+    /// <summary>
+    /// Muestra la fila de tarjetas de estadísticas (clientes, citas hoy, por confirmar).
+    /// </summary>
+    public bool DashboardMostrarEstadisticas { get; set; } = true;
+
+    /// <summary>
+    /// Muestra el panel de alertas y pendientes en el Dashboard.
+    /// </summary>
+    public bool DashboardMostrarAlertas { get; set; } = true;
+
+    /// <summary>
+    /// Muestra los botones de acciones rápidas (nuevo cliente, nueva cita, nuevo trabajo).
+    /// </summary>
+    public bool DashboardMostrarAccionesRapidas { get; set; } = true;
+
+    #endregion
+
     #region Propiedades Calculadas
 
     /// <summary>
