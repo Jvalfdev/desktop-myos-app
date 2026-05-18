@@ -5,6 +5,13 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es/1.0.0/).
 
 ---
 
+## [0.5.6] - 2026-05-19
+
+### Arreglado
+- Tras firmar el **RGPD** en la ficha del cliente, Trabajos ya no muestra por error que «debe tener RGPD» al abrir o firmar un trabajo (consulta fresca a BD en lugar de caché desactualizada).
+
+---
+
 ## [0.5.5] - 2026-05-18
 
 ### Añadido
@@ -87,6 +94,7 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es/1.0.0/).
 
 ---
 
+[0.5.6]: https://github.com/Jvalfdev/desktop-myos-app/releases/tag/v0.5.6
 [0.5.5]: https://github.com/Jvalfdev/desktop-myos-app/releases/tag/v0.5.5
 [0.5.4]: https://github.com/Jvalfdev/desktop-myos-app/releases/tag/v0.5.4
 [0.5.3]: https://github.com/Jvalfdev/desktop-myos-app/releases/tag/v0.5.3
