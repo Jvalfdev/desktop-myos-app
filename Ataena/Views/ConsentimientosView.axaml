@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Ataena.ViewModels"
              xmlns:models="using:Ataena.Models"
+             xmlns:views="using:Ataena.Views"
              x:Class="Ataena.Views.ConsentimientosView"
              x:DataType="vm:ConsentimientosViewModel">
 
@@ -96,46 +97,37 @@
                                VerticalAlignment="Center"
                                Opacity="0.7"/>
 
-                    <!-- Acciones -->
+                    <!-- Acciones: Ver, Renovar, Borrar -->
                     <StackPanel Grid.Column="2"
                                 Orientation="Horizontal"
-                                Spacing="8"
+                                Spacing="6"
                                 VerticalAlignment="Center">
                       <Button Classes="btn-secondary"
-                              MinWidth="90"
+                              MinWidth="64"
                               Height="34"
-                              Padding="10,0"
-                              ToolTip.Tip="Ver PDF"
+                              Padding="8,0"
+                              ToolTip.Tip="Abrir PDF"
                               Command="{Binding $parent[UserControl].DataContext.AbrirConsentimientoCommand}"
                               CommandParameter="{Binding}">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                          <TextBlock Text="📄" FontSize="14" VerticalAlignment="Center"/>
-                          <TextBlock Text="Ver" FontSize="12" VerticalAlignment="Center"/>
-                        </StackPanel>
+                        <TextBlock Text="Ver" FontSize="12"/>
                       </Button>
                       <Button Classes="btn-secondary"
-                              MinWidth="100"
+                              MinWidth="76"
                               Height="34"
-                              Padding="10,0"
-                              ToolTip.Tip="Exportar a archivo"
-                              Command="{Binding $parent[UserControl].DataContext.ExportarConsentimientoCommand}"
+                              Padding="8,0"
+                              ToolTip.Tip="Firmar de nuevo (sustituye al anterior)"
+                              Command="{Binding $parent[UserControl].DataContext.RenovarConsentimientoCommand}"
                               CommandParameter="{Binding}">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                          <TextBlock Text="💾" FontSize="14" VerticalAlignment="Center"/>
-                          <TextBlock Text="Exportar" FontSize="12" VerticalAlignment="Center"/>
-                        </StackPanel>
+                        <TextBlock Text="Renovar" FontSize="12"/>
                       </Button>
-                      <Button Classes="btn-secondary"
-                              MinWidth="90"
+                      <Button Classes="btn-danger"
+                              MinWidth="68"
                               Height="34"
-                              Padding="10,0"
-                              ToolTip.Tip="Enviar por correo"
-                              Command="{Binding $parent[UserControl].DataContext.EnviarConsentimientoPorCorreoCommand}"
+                              Padding="8,0"
+                              ToolTip.Tip="Eliminar consentimiento y PDF"
+                              Command="{Binding $parent[UserControl].DataContext.EliminarConsentimientoCommand}"
                               CommandParameter="{Binding}">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                          <TextBlock Text="📧" FontSize="14" VerticalAlignment="Center"/>
-                          <TextBlock Text="Enviar" FontSize="12" VerticalAlignment="Center"/>
-                        </StackPanel>
+                        <TextBlock Text="Borrar" FontSize="12"/>
                       </Button>
                     </StackPanel>
                   </Grid>
@@ -146,6 +138,8 @@
         </ScrollViewer>
       </Border>
     </Grid>
+
+    <views:ConsentimientoFirmaView Grid.RowSpan="3" DataContext="{Binding ConsentimientoFirmaVM}"/>
 
     <!-- Mensaje de error -->
     <Border Grid.Row="2"

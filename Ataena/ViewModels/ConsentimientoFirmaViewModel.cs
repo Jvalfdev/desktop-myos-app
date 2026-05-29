@@ -125,12 +125,6 @@ public partial class ConsentimientoFirmaViewModel : ViewModelBase
     private string _estadoConexion = "⏳ Esperando conexión...";
 
     /// <summary>
-    /// Indica si el usuario acepta los términos.
-    /// </summary>
-    [ObservableProperty]
-    private bool _aceptaTerminos = false;
-
-    /// <summary>
     /// Indica si el modal está visible.
     /// </summary>
     [ObservableProperty]
@@ -289,12 +283,6 @@ public partial class ConsentimientoFirmaViewModel : ViewModelBase
             return;
         }
 
-        if (!AceptaTerminos)
-        {
-            EstadoConexion = "⚠️ Debes aceptar los términos para continuar";
-            return;
-        }
-
         if (Cliente == null || _consentimiento == null)
         {
             Log.Error("Datos incompletos para generar PDF");
@@ -347,21 +335,14 @@ public partial class ConsentimientoFirmaViewModel : ViewModelBase
                 return;
             }
 
-            EstadoConexion = "✅ Consentimiento firmado y guardado correctamente";
-            _rutaPdfGenerado = rutaPdf;
-            PdfGenerado = true;
-            OnPropertyChanged(nameof(MostrarImprimir));
-
             OverlayNotificationService.Mostrar(
-                "El archivo PDF del consentimiento se ha guardado. Puedes imprimirlo desde el mismo modal o cerrar cuando termines.",
+                "El PDF del consentimiento se ha guardado en la carpeta del cliente.",
                 OverlayNotificationKind.Success,
                 "¡PDF guardado!");
 
-            // Disparar evento de firma completada
             FirmaCompletada?.Invoke(this, Cliente);
 
-            // No cerrar automáticamente: el usuario puede imprimir o cerrar
-            EstaProcesando = false;
+            await Dispatcher.UIThread.InvokeAsync(CerrarModalYServidor);
         }
         catch (Exception ex)
         {
@@ -620,7 +601,6 @@ public partial class ConsentimientoFirmaViewModel : ViewModelBase
         FirmaRecibida = false;
         ImagenFirmaBase64 = null;
         EstadoConexion = "⏳ Esperando conexión...";
-        AceptaTerminos = false;
         EstaProcesando = false;
         _tokenActual = null;
         

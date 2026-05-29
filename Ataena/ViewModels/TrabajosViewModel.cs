@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Avalonia.Media.Imaging;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.EntityFrameworkCore;
@@ -23,6 +24,8 @@ public partial class TrabajosViewModel : ViewModelBase
 {
     private readonly AtaenaDbContext _db = new();
     private ClientesViewModel? _clientesVM;
+    private EventHandler<Cliente>? _renovacionConsentimientoFirmaHandler;
+    private EventHandler? _renovacionModalCerradoHandler;
 
     /// <summary>
     /// Permite inyectar el ViewModel de Clientes para refrescar la ficha cuando cambian trabajos.
@@ -152,7 +155,7 @@ public partial class TrabajosViewModel : ViewModelBase
     public bool MostrarAvisoNoModificable => EsEdicion && TrabajoSeleccionado != null && TrabajoSeleccionado.TieneConsentimiento;
 
     /// <summary>
-    /// Formulario de edición con consentimiento de trabajo ya firmado: bloquea cliente, tipo, descripción y notas.
+    /// Formulario de edición con consentimiento de trabajo ya firmado: bloquea cliente, tipo y descripción (no las notas internas).
     /// </summary>
     public bool TrabajoFormularioBloqueadoPorConsentimiento =>
         EsEdicion && TrabajoSeleccionado != null && TrabajoSeleccionado.TieneConsentimiento;
@@ -164,9 +167,28 @@ public partial class TrabajosViewModel : ViewModelBase
         TrabajoSeleccionado?.Cliente != null && TrabajoSeleccionado.Cliente.PermiteFotosTrabajo;
 
     /// <summary>
-    /// Si es false, cliente/tipo/descripción/notas se muestran deshabilitados (solo fotos y documentos siguen activos).
+    /// Si es false, cliente/tipo/descripción del consentimiento están deshabilitados (fotos, PDF y notas internas siguen activos).
     /// </summary>
     public bool TrabajoCamposPrincipalesHabilitados => !TrabajoFormularioBloqueadoPorConsentimiento;
+
+    /// <summary>
+    /// Permite guardar: siempre en alta; en edición con consentimiento firmado solo para actualizar notas internas.
+    /// </summary>
+    public bool PuedeGuardarTrabajoFormulario =>
+        !TrabajoFormularioBloqueadoPorConsentimiento || EsEdicion;
+
+    /// <summary>
+    /// Eliminar trabajo está permitido en edición (también con consentimiento firmado; confirmación reforzada).
+    /// </summary>
+    public bool PuedeEliminarTrabajo => EsEdicion && TrabajoSeleccionado != null;
+
+    /// <summary>
+    /// Tooltip del botón eliminar según si hay consentimiento de trabajo firmado.
+    /// </summary>
+    public string TooltipEliminarTrabajo =>
+        TrabajoSeleccionado?.TieneConsentimiento == true
+            ? "Elimina el trabajo y el PDF del consentimiento firmado. Se pedirá confirmación adicional."
+            : "Eliminar este trabajo de forma permanente";
 
     #endregion
 
@@ -192,6 +214,9 @@ public partial class TrabajosViewModel : ViewModelBase
         OnPropertyChanged(nameof(MostrarAvisoNoModificable));
         OnPropertyChanged(nameof(TrabajoFormularioBloqueadoPorConsentimiento));
         OnPropertyChanged(nameof(TrabajoCamposPrincipalesHabilitados));
+        OnPropertyChanged(nameof(PuedeGuardarTrabajoFormulario));
+        OnPropertyChanged(nameof(PuedeEliminarTrabajo));
+        OnPropertyChanged(nameof(TooltipEliminarTrabajo));
         OnPropertyChanged(nameof(ClientePermiteFotosEnTrabajo));
     }
 
@@ -203,6 +228,9 @@ public partial class TrabajosViewModel : ViewModelBase
         OnPropertyChanged(nameof(MostrarAvisoNoModificable));
         OnPropertyChanged(nameof(TrabajoFormularioBloqueadoPorConsentimiento));
         OnPropertyChanged(nameof(TrabajoCamposPrincipalesHabilitados));
+        OnPropertyChanged(nameof(PuedeGuardarTrabajoFormulario));
+        OnPropertyChanged(nameof(PuedeEliminarTrabajo));
+        OnPropertyChanged(nameof(TooltipEliminarTrabajo));
         OnPropertyChanged(nameof(ClientePermiteFotosEnTrabajo));
     }
 
@@ -311,6 +339,7 @@ public partial class TrabajosViewModel : ViewModelBase
         _ = CargarTrabajos();
         _ = CargarClientes();
         FotoTrabajoVM = new FotoTrabajoViewModel(_db);
+        FotoTrabajoVM.FotoGuardada += OnFotoTrabajoGuardada;
     }
 
     #endregion
@@ -489,43 +518,80 @@ public partial class TrabajosViewModel : ViewModelBase
     {
         try
         {
-            // Validación básica
-            if (ClienteSeleccionado == null)
+            if (EsEdicion && TrabajoSeleccionado == null)
             {
-                MensajeError = "Debes seleccionar un cliente";
+                MensajeError = "No hay trabajo seleccionado";
                 return;
             }
 
-            if (string.IsNullOrWhiteSpace(Descripcion))
+            // Con consentimiento firmado solo se guardan notas: el cliente viene del trabajo, no del ComboBox
+            if (!TrabajoFormularioBloqueadoPorConsentimiento)
             {
-                MensajeError = "La descripción es obligatoria";
-                return;
+                if (ClienteSeleccionado == null)
+                {
+                    MensajeError = "Debes seleccionar un cliente";
+                    return;
+                }
+
+                if (string.IsNullOrWhiteSpace(Descripcion))
+                {
+                    MensajeError = "La descripción es obligatoria";
+                    return;
+                }
+            }
+
+            if (TrabajoFormularioBloqueadoPorConsentimiento &&
+                string.IsNullOrWhiteSpace(Descripcion) &&
+                !string.IsNullOrWhiteSpace(TrabajoSeleccionado?.Descripcion))
+            {
+                Descripcion = TrabajoSeleccionado!.Descripcion;
             }
 
             Cargando = true;
             MensajeError = string.Empty;
 
+            var clienteParaGuardar = ClienteSeleccionado;
+
             if (EsEdicion && TrabajoSeleccionado != null)
             {
-                // Actualizar trabajo existente
-                Log.Information("Actualizando trabajo ID: {TrabajoId}, Cliente: {ClienteId}", 
-                    TrabajoSeleccionado.Id, ClienteSeleccionado.Id);
-                
-                TrabajoSeleccionado.ClienteId = ClienteSeleccionado.Id;
-                TrabajoSeleccionado.Tipo = TipoTrabajo;
-                TrabajoSeleccionado.Descripcion = Descripcion.Trim();
-                TrabajoSeleccionado.Notas = string.IsNullOrWhiteSpace(Notas) ? null : Notas.Trim();
+                if (TrabajoFormularioBloqueadoPorConsentimiento)
+                {
+                    Log.Information("Actualizando solo notas internas del trabajo ID: {TrabajoId}", TrabajoSeleccionado.Id);
+                    TrabajoSeleccionado.Notas = string.IsNullOrWhiteSpace(Notas) ? null : Notas.Trim();
+                }
+                else
+                {
+                    if (clienteParaGuardar == null)
+                    {
+                        MensajeError = "Debes seleccionar un cliente";
+                        return;
+                    }
+
+                    Log.Information("Actualizando trabajo ID: {TrabajoId}, Cliente: {ClienteId}",
+                        TrabajoSeleccionado.Id, clienteParaGuardar.Id);
+
+                    TrabajoSeleccionado.ClienteId = clienteParaGuardar.Id;
+                    TrabajoSeleccionado.Tipo = TipoTrabajo;
+                    TrabajoSeleccionado.Descripcion = Descripcion.Trim();
+                    TrabajoSeleccionado.Notas = string.IsNullOrWhiteSpace(Notas) ? null : Notas.Trim();
+                }
             }
             else
             {
+                if (clienteParaGuardar == null)
+                {
+                    MensajeError = "Debes seleccionar un cliente";
+                    return;
+                }
+
                 // Crear nuevo trabajo
-                Log.Information("Creando nuevo trabajo para cliente {ClienteId}: {Descripcion}", 
-                    ClienteSeleccionado.Id, Descripcion);
-                
+                Log.Information("Creando nuevo trabajo para cliente {ClienteId}: {Descripcion}",
+                    clienteParaGuardar.Id, Descripcion);
+
                 var ahora = DateTime.Now;
                 var nuevoTrabajo = new Trabajo
                 {
-                    ClienteId = ClienteSeleccionado.Id,
+                    ClienteId = clienteParaGuardar.Id,
                     Tipo = TipoTrabajo,
                     Descripcion = Descripcion.Trim(),
                     Notas = string.IsNullOrWhiteSpace(Notas) ? null : Notas.Trim(),
@@ -609,13 +675,16 @@ public partial class TrabajosViewModel : ViewModelBase
                 }
             }
             
+            var clienteIdTrasGuardar = clienteParaGuardar?.Id ?? TrabajoSeleccionado?.ClienteId;
+
             MostrarFormulario = false;
             await CargarTrabajos();
 
             // Si la ficha del cliente está abierta, refrescarla para reflejar el nuevo trabajo
-            if (_clientesVM != null && _clientesVM.MostrarFicha && 
+            if (_clientesVM != null && _clientesVM.MostrarFicha &&
                 _clientesVM.ClienteSeleccionado != null &&
-                _clientesVM.ClienteSeleccionado.Id == ClienteSeleccionado.Id)
+                clienteIdTrasGuardar.HasValue &&
+                _clientesVM.ClienteSeleccionado.Id == clienteIdTrasGuardar.Value)
             {
                 await _clientesVM.VerFichaClienteCommand.ExecuteAsync(_clientesVM.ClienteSeleccionado);
             }
@@ -771,21 +840,7 @@ public partial class TrabajosViewModel : ViewModelBase
 
             MensajeError = string.Empty;
 
-            if (FotoTrabajoVM == null)
-            {
-                FotoTrabajoVM = new FotoTrabajoViewModel(_db);
-                // Suscribirse al evento de foto guardada para refrescar las imágenes en la UI
-                FotoTrabajoVM.FotoGuardada += async (s, trabajoActualizado) =>
-                {
-                    // Refrescar las fotos cuando se guarda una nueva
-                    if (EsEdicion && TrabajoSeleccionado != null && TrabajoSeleccionado.Id == trabajoActualizado.Id)
-                    {
-                        await RefrescarFotosTrabajoAsync();
-                    }
-                };
-            }
-
-            await FotoTrabajoVM.AbrirModalAsync(trabajoFoto, esAntes);
+            await FotoTrabajoVM!.AbrirModalAsync(trabajoFoto, esAntes);
         }
         catch (Exception ex)
         {
@@ -872,6 +927,7 @@ public partial class TrabajosViewModel : ViewModelBase
                         OnPropertyChanged(nameof(MostrarAvisoNoModificable));
                         OnPropertyChanged(nameof(TrabajoFormularioBloqueadoPorConsentimiento));
                         OnPropertyChanged(nameof(TrabajoCamposPrincipalesHabilitados));
+                        OnPropertyChanged(nameof(PuedeGuardarTrabajoFormulario));
                     }
                 };
             }
@@ -941,6 +997,178 @@ public partial class TrabajosViewModel : ViewModelBase
         }
 
         return Task.CompletedTask;
+    }
+
+    private void QuitarHandlersRenovacionConsentimientoTemporal()
+    {
+        if (ConsentimientoFirmaVM == null)
+            return;
+
+        if (_renovacionConsentimientoFirmaHandler != null)
+        {
+            ConsentimientoFirmaVM.FirmaCompletada -= _renovacionConsentimientoFirmaHandler;
+            _renovacionConsentimientoFirmaHandler = null;
+        }
+
+        if (_renovacionModalCerradoHandler != null)
+        {
+            ConsentimientoFirmaVM.ModalSesionFinalizada -= _renovacionModalCerradoHandler;
+            _renovacionModalCerradoHandler = null;
+        }
+    }
+
+    private async Task RecargarTrabajoSeleccionadoTrasConsentimientoAsync()
+    {
+        if (TrabajoSeleccionado == null)
+            return;
+
+        await _db.Entry(TrabajoSeleccionado).ReloadAsync();
+        await _db.Entry(TrabajoSeleccionado).Reference(t => t.Consentimiento).LoadAsync();
+        OnPropertyChanged(nameof(TrabajoSeleccionado));
+        OnPropertyChanged(nameof(MostrarAvisoNoModificable));
+        OnPropertyChanged(nameof(TrabajoFormularioBloqueadoPorConsentimiento));
+        OnPropertyChanged(nameof(TrabajoCamposPrincipalesHabilitados));
+        OnPropertyChanged(nameof(PuedeGuardarTrabajoFormulario));
+    }
+
+    /// <summary>
+    /// Renueva el consentimiento de trabajo: nueva firma sustituye al anterior.
+    /// </summary>
+    [RelayCommand]
+    private async Task RenovarConsentimientoTrabajo(Trabajo? trabajo = null)
+    {
+        var trabajoARenovar = trabajo ?? TrabajoSeleccionado;
+        if (trabajoARenovar?.Consentimiento == null || !trabajoARenovar.Consentimiento.Firmado)
+            return;
+
+        try
+        {
+            await _db.Entry(trabajoARenovar).Reference(t => t.Cliente).LoadAsync();
+            await _db.Entry(trabajoARenovar).Reference(t => t.Consentimiento).LoadAsync();
+
+            var cliente = trabajoARenovar.Cliente;
+            var consentimientoAnterior = trabajoARenovar.Consentimiento;
+            if (cliente == null)
+            {
+                MensajeError = "Cliente no encontrado.";
+                return;
+            }
+
+            await _db.Entry(cliente).Collection(c => c.Consentimientos).LoadAsync();
+
+            var tipoNuevo = consentimientoAnterior.Tipo;
+            if (consentimientoAnterior.EsConsentimientoMenor && !cliente.EsMenorDeEdad)
+                tipoNuevo = TipoConsentimiento.Trabajo;
+
+            ConsentimientoFirmaVM ??= new ConsentimientoFirmaViewModel();
+            QuitarHandlersRenovacionConsentimientoTemporal();
+
+            var idTrabajo = trabajoARenovar.Id;
+            var idAnterior = consentimientoAnterior.Id;
+
+            _renovacionConsentimientoFirmaHandler = async (_, clienteFirmado) =>
+            {
+                try
+                {
+                    QuitarHandlersRenovacionConsentimientoTemporal();
+
+                    await using var cx = new AtaenaDbContext();
+                    var anteriorEnBd = await cx.Consentimientos.FindAsync(idAnterior);
+                    if (anteriorEnBd != null && !anteriorEnBd.Renovado)
+                    {
+                        anteriorEnBd.Renovado = true;
+                        await cx.SaveChangesAsync();
+                    }
+
+                    await CargarTrabajos();
+                    if (TrabajoSeleccionado?.Id == idTrabajo)
+                        await RecargarTrabajoSeleccionadoTrasConsentimientoAsync();
+
+                    if (_clientesVM != null && _clientesVM.MostrarFicha &&
+                        _clientesVM.ClienteSeleccionado?.Id == clienteFirmado.Id)
+                    {
+                        await _clientesVM.VerFichaClienteCommand.ExecuteAsync(_clientesVM.ClienteSeleccionado);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "Error al finalizar renovación de consentimiento de trabajo {TrabajoId}", idTrabajo);
+                }
+            };
+            _renovacionModalCerradoHandler = (_, _) => QuitarHandlersRenovacionConsentimientoTemporal();
+
+            ConsentimientoFirmaVM.FirmaCompletada += _renovacionConsentimientoFirmaHandler;
+            ConsentimientoFirmaVM.ModalSesionFinalizada += _renovacionModalCerradoHandler;
+
+            MostrarFormulario = false;
+            await ConsentimientoFirmaVM.AbrirModal(cliente, tipoNuevo, trabajoARenovar,
+                omitirConsentimientoIdRenovacion: idAnterior);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error al renovar consentimiento de trabajo");
+            MensajeError = $"Error al renovar: {ex.Message}";
+        }
+    }
+
+    /// <summary>
+    /// Elimina el consentimiento de trabajo firmado (el trabajo permanece).
+    /// </summary>
+    [RelayCommand]
+    private async Task EliminarConsentimientoTrabajo(Trabajo? trabajo = null)
+    {
+        var trabajoAfectado = trabajo ?? TrabajoSeleccionado;
+        if (trabajoAfectado?.Consentimiento == null || !trabajoAfectado.Consentimiento.Firmado)
+            return;
+
+        await _db.Entry(trabajoAfectado).Reference(t => t.Cliente).LoadAsync();
+        var nombreCliente = trabajoAfectado.Cliente?.NombreCompleto ?? "el cliente";
+        var consentimiento = trabajoAfectado.Consentimiento;
+
+        var mensaje =
+            $"Se eliminará el consentimiento de este trabajo y su PDF.\n\n" +
+            ConsentimientoService.MensajeAvisoTrasEliminar(consentimiento.Tipo, nombreCliente) +
+            "\n\nEl registro del trabajo no se borra. Esta acción no se puede deshacer.";
+
+        var confirmado = await DialogService.ConfirmarAccionAsync(
+            titulo: "Eliminar consentimiento de trabajo",
+            mensaje: mensaje,
+            botonConfirmar: "Sí, eliminar",
+            esPeligroso: true);
+
+        if (!confirmado)
+            return;
+
+        try
+        {
+            var (exito, tipo, _) =
+                await ConsentimientoService.EliminarConsentimientoAsync(_db, consentimiento.Id);
+            if (!exito)
+            {
+                MensajeError = "No se pudo eliminar el consentimiento.";
+                return;
+            }
+
+            await CargarTrabajos();
+            if (TrabajoSeleccionado?.Id == trabajoAfectado.Id)
+                await RecargarTrabajoSeleccionadoTrasConsentimientoAsync();
+
+            if (_clientesVM != null && _clientesVM.MostrarFicha &&
+                trabajoAfectado.Cliente != null &&
+                _clientesVM.ClienteSeleccionado?.Id == trabajoAfectado.Cliente.Id)
+            {
+                await _clientesVM.VerFichaClienteCommand.ExecuteAsync(trabajoAfectado.Cliente);
+            }
+
+            OverlayNotificationService.Mostrar(
+                ConsentimientoService.MensajeAvisoTrasEliminar(tipo, nombreCliente),
+                OverlayNotificationKind.Warning);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error al eliminar consentimiento de trabajo {TrabajoId}", trabajoAfectado.Id);
+            MensajeError = $"Error al eliminar: {ex.Message}";
+        }
     }
 
     /// <summary>
@@ -1062,34 +1290,49 @@ public partial class TrabajosViewModel : ViewModelBase
     {
         if (TrabajoSeleccionado == null) return;
 
-        // Contar citas asociadas al trabajo
+        await _db.Entry(TrabajoSeleccionado).Reference(t => t.Cliente).LoadAsync();
+        await _db.Entry(TrabajoSeleccionado).Reference(t => t.Consentimiento).LoadAsync();
+
         var numCitas = await _db.Citas.CountAsync(c => c.TrabajoId == TrabajoSeleccionado.Id);
-        var tieneConsentimiento = TrabajoSeleccionado.Consentimiento != null;
-        
-        string advertencia;
-        if (numCitas > 0 && tieneConsentimiento)
+        var consentimientoFirmado = TrabajoSeleccionado.TieneConsentimiento;
+
+        var nombreElemento =
+            $"{TrabajoSeleccionado.Descripcion} ({TrabajoSeleccionado.Cliente?.NombreCompleto ?? "Cliente"})";
+
+        bool confirmado;
+        if (consentimientoFirmado)
         {
-            advertencia = $"También se eliminarán {numCitas} cita(s) y el consentimiento firmado.";
-        }
-        else if (numCitas > 0)
-        {
-            advertencia = $"También se eliminarán {numCitas} cita(s) asociada(s).";
-        }
-        else if (tieneConsentimiento)
-        {
-            advertencia = "También se eliminará el consentimiento firmado.";
+            var detalleCitas = numCitas > 0
+                ? $"\n• Se desvincularán {numCitas} cita(s) del calendario (el trabajo desaparece; las citas pueden quedar sin trabajo asignado)."
+                : string.Empty;
+
+            var mensaje =
+                "Este trabajo tiene un consentimiento de trabajo FIRMADO (documento legal en PDF).\n\n" +
+                "Si continúas se eliminará:\n" +
+                "• El registro del trabajo\n" +
+                "• El consentimiento de trabajo y su PDF en la carpeta del cliente" +
+                detalleCitas +
+                "\n\n⚠️ No se puede deshacer. Usa esto solo si el trabajo se creó por error o es un duplicado.";
+
+            confirmado = await DialogService.ConfirmarAccionAsync(
+                titulo: "🗑️ Eliminar trabajo con consentimiento firmado",
+                mensaje: mensaje,
+                botonConfirmar: "Sí, eliminar todo",
+                esPeligroso: true);
         }
         else
         {
-            advertencia = "Esta acción no se puede deshacer.";
-        }
+            string advertencia;
+            if (numCitas > 0)
+                advertencia = $"También se desvincularán {numCitas} cita(s) asociada(s). Esta acción no se puede deshacer.";
+            else
+                advertencia = "Esta acción no se puede deshacer.";
 
-        // Mostrar diálogo de confirmación
-        var confirmado = await DialogService.ConfirmarEliminarAsync(
-            tipoElemento: "el trabajo",
-            nombreElemento: $"{TrabajoSeleccionado.Descripcion} ({TrabajoSeleccionado.Cliente?.NombreCompleto ?? "Cliente"})",
-            advertenciaAdicional: advertencia
-        );
+            confirmado = await DialogService.ConfirmarEliminarAsync(
+                tipoElemento: "el trabajo",
+                nombreElemento: nombreElemento,
+                advertenciaAdicional: advertencia);
+        }
 
         if (!confirmado)
         {
@@ -1099,10 +1342,31 @@ public partial class TrabajosViewModel : ViewModelBase
 
         try
         {
-            Log.Warning("Eliminando trabajo ID: {TrabajoId}, Descripción: {Descripcion}", 
+            Log.Warning("Eliminando trabajo ID: {TrabajoId}, Descripción: {Descripcion}",
                 TrabajoSeleccionado.Id, TrabajoSeleccionado.Descripcion);
             Cargando = true;
-            
+
+            var consentimiento = TrabajoSeleccionado.Consentimiento;
+            if (consentimiento != null)
+            {
+                if (!string.IsNullOrEmpty(consentimiento.RutaDocumento) &&
+                    File.Exists(consentimiento.RutaDocumento))
+                {
+                    try
+                    {
+                        File.Delete(consentimiento.RutaDocumento);
+                        Log.Information("PDF de consentimiento eliminado: {Ruta}", consentimiento.RutaDocumento);
+                    }
+                    catch (Exception exPdf)
+                    {
+                        Log.Warning(exPdf, "No se pudo borrar el PDF del consentimiento: {Ruta}",
+                            consentimiento.RutaDocumento);
+                    }
+                }
+
+                _db.Consentimientos.Remove(consentimiento);
+            }
+
             _db.Trabajos.Remove(TrabajoSeleccionado);
             await _db.SaveChangesAsync();
             
@@ -1171,7 +1435,11 @@ public partial class TrabajosViewModel : ViewModelBase
         await _db.Entry(trabajo).Reference(t => t.Cliente).LoadAsync();
         await _db.Entry(trabajo).Reference(t => t.Consentimiento).LoadAsync();
 
-        ClienteSeleccionado = Clientes.FirstOrDefault(c => c.Id == trabajo.ClienteId) ?? trabajo.Cliente;
+        var clienteTrabajo = Clientes.FirstOrDefault(c => c.Id == trabajo.ClienteId) ?? trabajo.Cliente;
+        ClienteSeleccionado = clienteTrabajo;
+        if (clienteTrabajo != null)
+            TextoBusquedaClienteFormulario = clienteTrabajo.NombreCompleto;
+
         TipoTrabajo = trabajo.Tipo;
         Descripcion = trabajo.Descripcion;
         Notas = trabajo.Notas;
@@ -1182,6 +1450,9 @@ public partial class TrabajosViewModel : ViewModelBase
         OnPropertyChanged(nameof(TrabajoSeleccionado));
         OnPropertyChanged(nameof(TrabajoFormularioBloqueadoPorConsentimiento));
         OnPropertyChanged(nameof(TrabajoCamposPrincipalesHabilitados));
+        OnPropertyChanged(nameof(PuedeGuardarTrabajoFormulario));
+        OnPropertyChanged(nameof(PuedeEliminarTrabajo));
+        OnPropertyChanged(nameof(TooltipEliminarTrabajo));
         OnPropertyChanged(nameof(ClientePermiteFotosEnTrabajo));
         ActualizarClientesFiltradosFormulario();
     }
@@ -1271,6 +1542,12 @@ public partial class TrabajosViewModel : ViewModelBase
     /// </summary>
     private void AsegurarClienteSeleccionadoEnListaFiltrada()
     {
+        if (ClienteSeleccionado == null && EsEdicion && TrabajoSeleccionado != null && Clientes.Count > 0)
+        {
+            ClienteSeleccionado = Clientes.FirstOrDefault(c => c.Id == TrabajoSeleccionado.ClienteId)
+                                  ?? TrabajoSeleccionado.Cliente;
+        }
+
         if (ClienteSeleccionado == null || Clientes.Count == 0)
             return;
 
@@ -1292,6 +1569,33 @@ public partial class TrabajosViewModel : ViewModelBase
     {
         FotoAntesImagen = CargarBitmapDesdeRuta(trabajo.FotoAntesPath);
         FotoDespuesImagen = CargarBitmapDesdeRuta(trabajo.FotoDespuesPath);
+    }
+
+    /// <summary>
+    /// Tras guardar una foto desde el móvil, actualiza el modal de edición de trabajo sin cerrarlo.
+    /// </summary>
+    private async void OnFotoTrabajoGuardada(object? sender, Trabajo trabajoActualizado)
+    {
+        try
+        {
+            await Dispatcher.UIThread.InvokeAsync(async () =>
+            {
+                if (!MostrarFormulario || TrabajoSeleccionado == null ||
+                    TrabajoSeleccionado.Id != trabajoActualizado.Id)
+                {
+                    return;
+                }
+
+                TrabajoSeleccionado.FotoAntesPath = trabajoActualizado.FotoAntesPath;
+                TrabajoSeleccionado.FotoDespuesPath = trabajoActualizado.FotoDespuesPath;
+                await RefrescarFotosTrabajoAsync();
+                OnPropertyChanged(nameof(TrabajoSeleccionado));
+            });
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error al refrescar UI tras foto de trabajo {TrabajoId}", trabajoActualizado.Id);
+        }
     }
 
     /// <summary>

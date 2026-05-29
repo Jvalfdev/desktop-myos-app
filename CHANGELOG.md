@@ -5,6 +5,29 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es/1.0.0/).
 
 ---
 
+## [0.6.0] - 2026-05-29
+
+### Añadido
+- **Consentimientos:** acciones reducidas a **Ver**, **Renovar** y **Borrar** (ficha de cliente, trabajos y vista global). Al borrar, aviso en pantalla de que el cliente deja de tener ese consentimiento firmado.
+- **PDF de consentimiento:** numeración «Página X de Y» al pie de cada hoja.
+- **Fotos de trabajo:** botón **Subir desde PC** además de la cámara del móvil.
+- **Validación de cliente:** indicadores en el propio campo (borde rojo y mensaje) para DNI, teléfono, email, fecha de nacimiento y datos del tutor.
+
+### Cambiado
+- **Firma en móvil:** hay que leer hasta el final (pasos 1 y 2) antes de marcar aceptación o firmar; sin checkbox de consentimiento en el modal del PC.
+- Tras **generar el PDF**, el modal de firma se cierra y aparece aviso global «PDF guardado»; preview de firma recibida visible en el modal del PC.
+- **Trabajos con consentimiento firmado:** solo las **notas internas** son editables; botón **Cerrar** en el editor; se puede **eliminar el trabajo** (con confirmación reforzada) borrando también consentimiento y PDF.
+- **Renovar** consentimiento sustituye al anterior (firma nueva en modal); disponible siempre en consentimientos firmados, no solo cuando «necesita renovación».
+- Campos obligatorios del cliente: **nombre, apellidos, DNI y fecha de nacimiento** (+ tutor si es menor); teléfono y email opcionales con validación de formato si se rellenan.
+- Fecha de nacimiento: no se permiten fechas futuras (texto, calendario y al guardar).
+
+### Arreglado
+- **Dashboard:** ya no avisa de «falta RGPD» si el cliente tiene RGPD o RGPD de menor firmado.
+- Tras añadir una foto en el modal de trabajo, la vista se actualiza sin cerrar el editor.
+- Scroll del modal de trabajo y selector de cliente sin interferir con la rueda del ratón.
+
+---
+
 ## [0.5.6] - 2026-05-19
 
 ### Arreglado
@@ -94,6 +117,7 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es/1.0.0/).
 
 ---
 
+[0.6.0]: https://github.com/Jvalfdev/desktop-myos-app/releases/tag/v0.6.0
 [0.5.6]: https://github.com/Jvalfdev/desktop-myos-app/releases/tag/v0.5.6
 [0.5.5]: https://github.com/Jvalfdev/desktop-myos-app/releases/tag/v0.5.5
 [0.5.4]: https://github.com/Jvalfdev/desktop-myos-app/releases/tag/v0.5.4

@@ -15,11 +15,14 @@ namespace Ataena.ViewModels;
 
 /// <summary>
 /// ViewModel para la vista global de consentimientos.
-/// Permite listar, filtrar y abrir/descargar/enviar consentimientos.
+/// Acciones por consentimiento: Ver, Renovar y Borrar.
 /// </summary>
 public partial class ConsentimientosViewModel : ViewModelBase
 {
     private readonly AtaenaDbContext _db = new();
+
+    private EventHandler<Cliente>? _renovacionConsentimientoFirmaHandler;
+    private EventHandler? _renovacionModalCerradoHandler;
 
     [ObservableProperty]
     private ObservableCollection<Consentimiento> _consentimientos = new();
@@ -38,6 +41,9 @@ public partial class ConsentimientosViewModel : ViewModelBase
 
     [ObservableProperty]
     private string _mensajeError = string.Empty;
+
+    [ObservableProperty]
+    private ConsentimientoFirmaViewModel? _consentimientoFirmaVM;
 
     public ConsentimientosViewModel()
     {
@@ -61,17 +67,14 @@ public partial class ConsentimientosViewModel : ViewModelBase
             var query = _db.Consentimientos
                 .Include(c => c.Cliente)
                 .Include(c => c.Trabajo)
+                .Where(c => c.Firmado)
                 .AsQueryable();
 
             if (ClienteFiltro != null)
-            {
                 query = query.Where(c => c.ClienteId == ClienteFiltro.Id);
-            }
 
             if (TipoFiltro.HasValue)
-            {
                 query = query.Where(c => c.Tipo == TipoFiltro.Value);
-            }
 
             var lista = await query
                 .OrderByDescending(c => c.FechaFirma)
@@ -110,15 +113,9 @@ public partial class ConsentimientosViewModel : ViewModelBase
         }
     }
 
-    partial void OnClienteFiltroChanged(Cliente? value)
-    {
-        _ = CargarConsentimientos();
-    }
+    partial void OnClienteFiltroChanged(Cliente? value) => _ = CargarConsentimientos();
 
-    partial void OnTipoFiltroChanged(TipoConsentimiento? value)
-    {
-        _ = CargarConsentimientos();
-    }
+    partial void OnTipoFiltroChanged(TipoConsentimiento? value) => _ = CargarConsentimientos();
 
     [RelayCommand]
     private Task LimpiarFiltros()
@@ -133,7 +130,8 @@ public partial class ConsentimientosViewModel : ViewModelBase
     {
         try
         {
-            if (string.IsNullOrEmpty(consentimiento.RutaDocumento) || !System.IO.File.Exists(consentimiento.RutaDocumento))
+            if (string.IsNullOrEmpty(consentimiento.RutaDocumento) ||
+                !System.IO.File.Exists(consentimiento.RutaDocumento))
             {
                 MensajeError = "No se encontró el archivo PDF del consentimiento.";
                 return Task.CompletedTask;
@@ -157,78 +155,143 @@ public partial class ConsentimientosViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private Task ExportarConsentimiento(Consentimiento consentimiento)
+    private async Task RenovarConsentimiento(Consentimiento? consentimientoAnterior)
     {
+        if (consentimientoAnterior == null || !consentimientoAnterior.Firmado)
+            return;
+
         try
         {
-            if (string.IsNullOrEmpty(consentimiento.RutaDocumento) || !System.IO.File.Exists(consentimiento.RutaDocumento))
+            var cliente = consentimientoAnterior.Cliente ??
+                await _db.Clientes.FindAsync(consentimientoAnterior.ClienteId);
+            if (cliente == null)
             {
-                MensajeError = "No se encontró el archivo PDF del consentimiento para exportar.";
-                return Task.CompletedTask;
+                MensajeError = "Cliente no encontrado.";
+                return;
             }
 
-            var origen = consentimiento.RutaDocumento;
-            var nombreArchivo = System.IO.Path.GetFileName(origen);
-            var destinoCarpeta = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
-            var destino = System.IO.Path.Combine(destinoCarpeta, nombreArchivo);
+            await _db.Entry(cliente).Collection(c => c.Consentimientos).LoadAsync();
 
-            System.IO.File.Copy(origen, destino, overwrite: true);
+            var tipoNuevo = consentimientoAnterior.Tipo;
+            if (consentimientoAnterior.EsConsentimientoMenor && !cliente.EsMenorDeEdad)
+            {
+                tipoNuevo = consentimientoAnterior.Tipo switch
+                {
+                    TipoConsentimiento.RGPD_Menor => TipoConsentimiento.RGPD,
+                    TipoConsentimiento.Trabajo_Menor => TipoConsentimiento.Trabajo,
+                    TipoConsentimiento.Imagenes_Menor => TipoConsentimiento.Imagenes,
+                    _ => consentimientoAnterior.Tipo
+                };
+            }
 
-            Log.Information("Consentimiento {ConsentimientoId} exportado a {Destino}", consentimiento.Id, destino);
+            ConsentimientoFirmaVM ??= new ConsentimientoFirmaViewModel();
+            QuitarHandlersRenovacionConsentimientoTemporal();
+
+            var idCliente = cliente.Id;
+            var idAnterior = consentimientoAnterior.Id;
+            var trabajo = consentimientoAnterior.TrabajoId.HasValue
+                ? await _db.Trabajos.FindAsync(consentimientoAnterior.TrabajoId.Value)
+                : null;
+
+            _renovacionConsentimientoFirmaHandler = async (_, clienteFirmado) =>
+            {
+                try
+                {
+                    QuitarHandlersRenovacionConsentimientoTemporal();
+                    if (clienteFirmado.Id != idCliente)
+                        return;
+
+                    await using var cx = new AtaenaDbContext();
+                    var anteriorEnBd = await cx.Consentimientos.FindAsync(idAnterior);
+                    if (anteriorEnBd != null && !anteriorEnBd.Renovado)
+                    {
+                        anteriorEnBd.Renovado = true;
+                        await cx.SaveChangesAsync();
+                    }
+
+                    await CargarConsentimientos();
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "Error al marcar consentimiento anterior {Id} como renovado", idAnterior);
+                }
+            };
+            _renovacionModalCerradoHandler = (_, _) => QuitarHandlersRenovacionConsentimientoTemporal();
+
+            ConsentimientoFirmaVM.FirmaCompletada += _renovacionConsentimientoFirmaHandler;
+            ConsentimientoFirmaVM.ModalSesionFinalizada += _renovacionModalCerradoHandler;
+
+            await ConsentimientoFirmaVM.AbrirModal(cliente, tipoNuevo, trabajo,
+                omitirConsentimientoIdRenovacion: idAnterior);
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Error al exportar consentimiento {ConsentimientoId}", consentimiento.Id);
-            MensajeError = $"Error al exportar el PDF: {ex.Message}";
+            Log.Error(ex, "Error al renovar consentimiento {ConsentimientoId}", consentimientoAnterior.Id);
+            MensajeError = $"Error al renovar: {ex.Message}";
         }
-
-        return Task.CompletedTask;
     }
 
     [RelayCommand]
-    private Task EnviarConsentimientoPorCorreo(Consentimiento consentimiento)
+    private async Task EliminarConsentimiento(Consentimiento? consentimiento)
     {
+        if (consentimiento == null || !consentimiento.Firmado)
+            return;
+
+        if (consentimiento.Cliente == null)
+            await _db.Entry(consentimiento).Reference(c => c.Cliente).LoadAsync();
+
+        var nombreCliente = consentimiento.Cliente?.NombreCompleto ?? "el cliente";
+        var mensaje =
+            $"Se eliminará el consentimiento «{consentimiento.NombreTipo}» y su PDF.\n\n" +
+            ConsentimientoService.MensajeAvisoTrasEliminar(consentimiento.Tipo, nombreCliente) +
+            "\n\nEsta acción no se puede deshacer.";
+
+        var confirmado = await DialogService.ConfirmarAccionAsync(
+            titulo: "Eliminar consentimiento",
+            mensaje: mensaje,
+            botonConfirmar: "Sí, eliminar",
+            esPeligroso: true);
+
+        if (!confirmado)
+            return;
+
         try
         {
-            if (consentimiento.Cliente == null)
+            var (exito, tipo, _) =
+                await ConsentimientoService.EliminarConsentimientoAsync(_db, consentimiento.Id);
+            if (!exito)
             {
-                // Cargar cliente si no está cargado
-                _db.Entry(consentimiento).Reference(c => c.Cliente).Load();
+                MensajeError = "No se pudo eliminar el consentimiento.";
+                return;
             }
 
-            if (string.IsNullOrEmpty(consentimiento.Cliente?.Email))
-            {
-                MensajeError = "El cliente no tiene email configurado.";
-                return Task.CompletedTask;
-            }
-
-            // Abrir cliente de correo predeterminado
-            Process.Start(new ProcessStartInfo
-            {
-                FileName = $"mailto:{consentimiento.Cliente.Email}?subject=Consentimiento%20{consentimiento.NombreTipo}&body=Adjunto%20el%20consentimiento%20firmado.",
-                UseShellExecute = true
-            });
-
-            // Abrir también el PDF para que el usuario lo adjunte
-            if (!string.IsNullOrEmpty(consentimiento.RutaDocumento) && System.IO.File.Exists(consentimiento.RutaDocumento))
-            {
-                Process.Start(new ProcessStartInfo
-                {
-                    FileName = consentimiento.RutaDocumento,
-                    UseShellExecute = true
-                });
-            }
-
-            Log.Information("Cliente de correo abierto para consentimiento {ConsentimientoId}", consentimiento.Id);
+            await CargarConsentimientos();
+            OverlayNotificationService.Mostrar(
+                ConsentimientoService.MensajeAvisoTrasEliminar(tipo, nombreCliente),
+                OverlayNotificationKind.Warning);
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Error al enviar consentimiento {ConsentimientoId} por correo", consentimiento.Id);
-            MensajeError = $"Error al abrir el cliente de correo: {ex.Message}";
+            Log.Error(ex, "Error al eliminar consentimiento {ConsentimientoId}", consentimiento.Id);
+            MensajeError = $"Error al eliminar: {ex.Message}";
+        }
+    }
+
+    private void QuitarHandlersRenovacionConsentimientoTemporal()
+    {
+        if (ConsentimientoFirmaVM == null)
+            return;
+
+        if (_renovacionConsentimientoFirmaHandler != null)
+        {
+            ConsentimientoFirmaVM.FirmaCompletada -= _renovacionConsentimientoFirmaHandler;
+            _renovacionConsentimientoFirmaHandler = null;
         }
 
-        return Task.CompletedTask;
+        if (_renovacionModalCerradoHandler != null)
+        {
+            ConsentimientoFirmaVM.ModalSesionFinalizada -= _renovacionModalCerradoHandler;
+            _renovacionModalCerradoHandler = null;
+        }
     }
 }
-
-

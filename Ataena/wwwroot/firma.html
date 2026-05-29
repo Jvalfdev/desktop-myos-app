@@ -84,15 +84,64 @@
         }
         .scroll-hint {
             text-align: center;
-            color: #6b7280;
-            font-size: 13px;
-            margin-top: 10px;
+            color: #b45309;
+            font-size: 15px;
+            font-weight: 700;
+            margin-top: 12px;
+            padding: 12px 14px;
+            background: #fffbeb;
+            border: 2px dashed #f59e0b;
+            border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 6px;
+            gap: 8px;
+            line-height: 1.35;
         }
         .scroll-hint.hidden { display: none; }
+        @keyframes scrollHintPulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.45); }
+            50% { box-shadow: 0 0 0 6px rgba(245, 158, 11, 0); }
+        }
+        .scroll-hint:not(.hidden) {
+            animation: scrollHintPulse 1.6s ease-in-out infinite;
+        }
+        .consent-text.needs-scroll {
+            border-color: #f97316;
+            box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.35);
+        }
+        .ux-banner {
+            padding: 16px 18px;
+            border-radius: 12px;
+            margin-bottom: 18px;
+            font-size: 15px;
+            line-height: 1.45;
+            display: block;
+        }
+        .ux-banner.hidden { display: none; }
+        .ux-banner strong {
+            display: block;
+            font-size: 17px;
+            margin-bottom: 8px;
+            line-height: 1.3;
+        }
+        .ux-banner--scroll {
+            background: #fef2f2;
+            border: 3px solid #dc2626;
+            color: #7f1d1d;
+        }
+        .ux-banner--accept {
+            background: #fffbeb;
+            border: 3px solid #d97706;
+            color: #78350f;
+        }
+        .accept-row.locked {
+            opacity: 0.85;
+            cursor: pointer;
+        }
+        .accept-row.locked label {
+            color: #9a3412;
+        }
 
         /* ───────── Aceptación ───────── */
         .accept-row {
@@ -128,14 +177,16 @@
         }
         .firma-aviso-bloqueo {
             display: none;
-            background: #fef3c7;
-            border: 1px solid #f59e0b;
-            color: #92400e;
-            padding: 10px 12px;
-            border-radius: 8px;
-            font-size: 13px;
-            margin-bottom: 12px;
+            background: #fee2e2;
+            border: 2px solid #ef4444;
+            color: #7f1d1d;
+            padding: 14px 16px;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 14px;
             text-align: center;
+            line-height: 1.4;
         }
         .signature-section.disabled .canvas-container {
             opacity: 0.55;
@@ -250,25 +301,30 @@
         </header>
 
         <main>
+            <div id="uxBanner" class="ux-banner ux-banner--scroll" role="alert" aria-live="polite">
+                <strong>⬇ Paso 1: Lee todo el documento</strong>
+                Desliza el recuadro gris de abajo <b>hasta el final</b>. Cuando llegues abajo, se activará la casilla para aceptar y podrás firmar.
+            </div>
+
             <!-- Texto del consentimiento -->
             <section class="consent-section">
-                <h2>📄 Documento</h2>
-                <div id="consentText" class="consent-text">{CONSENT_TEXT}</div>
-                <div id="scrollHint" class="scroll-hint">⬇ Desliza hasta el final para continuar</div>
+                <h2>📄 Documento (léelo completo)</h2>
+                <div id="consentText" class="consent-text needs-scroll">{CONSENT_TEXT}</div>
+                <div id="scrollHint" class="scroll-hint">⬇ <b>Desliza aquí hasta el final</b> del texto para continuar</div>
             </section>
 
             <!-- Aceptación -->
-            <div class="accept-row">
+            <div id="acceptRow" class="accept-row locked">
                 <input id="chkAccept" type="checkbox" disabled>
                 <label for="chkAccept">
-                    He leído y acepto el contenido de este consentimiento.
-                    <br><small>(se habilita al terminar de leer el documento)</small>
+                    <b>Paso 2:</b> He leído y acepto el contenido de este consentimiento.
+                    <br><small id="acceptHint">Primero termina de leer el documento (desliza hasta abajo).</small>
                 </label>
             </div>
 
             <!-- Área de firma (una caja: mayores) -->
             <div id="signatureSectionSingle" class="signature-section disabled">
-                <p class="firma-aviso-bloqueo">Marca la casilla de aceptacion arriba (y lee el documento hasta el final) para poder firmar.</p>
+                <p class="firma-aviso-bloqueo" data-aviso-firma>Completa los pasos de arriba: lee todo el documento, marca la casilla de aceptación y entonces podrás firmar aquí.</p>
                 <h2 style="font-size:16px;color:#374151;margin-bottom:12px;display:flex;align-items:center;gap:8px;">
                     ✍️ Firma aquí
                 </h2>
@@ -287,7 +343,7 @@
 
             <!-- Dos cajas: consentimiento de menor (mismo documento, un solo envío) -->
             <div id="signatureSectionDual" class="signature-section disabled" style="display:none;">
-                <p class="firma-aviso-bloqueo">Marca la casilla de aceptacion arriba (y lee el documento hasta el final) para poder firmar.</p>
+                <p class="firma-aviso-bloqueo" data-aviso-firma>Completa los pasos de arriba: lee todo el documento, marca la casilla de aceptación y entonces podrás firmar aquí.</p>
                 <h2 style="font-size:16px;color:#374151;margin-bottom:14px;">✍️ Firmas en este documento</h2>
 
                 <div class="firma-bloque">
@@ -324,14 +380,18 @@
     <script>
         window.__ATAENA_FIRMA_MENOR_DOS_CAJAS__ = {FIRMA_MENOR_DOS_CAJAS};
         window.__ATAENA_FIRMAS_HABILITADAS__ = false;
-        // Habilitar checkbox sólo cuando se haya hecho scroll hasta el final del consentimiento.
         (function () {
             var consent = document.getElementById('consentText');
             var hint = document.getElementById('scrollHint');
             var chk = document.getElementById('chkAccept');
+            var acceptRow = document.getElementById('acceptRow');
+            var acceptHint = document.getElementById('acceptHint');
+            var uxBanner = document.getElementById('uxBanner');
             var dual = window.__ATAENA_FIRMA_MENOR_DOS_CAJAS__ === true;
             var sectionSingle = document.getElementById('signatureSectionSingle');
             var sectionDual = document.getElementById('signatureSectionDual');
+            var scrolledToEnd = false;
+
             if (dual) {
                 sectionSingle.style.display = 'none';
                 sectionDual.style.display = 'block';
@@ -340,15 +400,81 @@
             function checkScrolled() {
                 var fits = consent.scrollHeight - consent.clientHeight <= 4;
                 var atBottom = consent.scrollTop + consent.clientHeight >= consent.scrollHeight - 8;
-                if (fits || atBottom) {
+                scrolledToEnd = fits || atBottom;
+
+                if (scrolledToEnd) {
                     chk.disabled = false;
+                    acceptRow.classList.remove('locked');
                     hint.classList.add('hidden');
+                    consent.classList.remove('needs-scroll');
+                    if (acceptHint) {
+                        acceptHint.textContent = 'Ya puedes marcar esta casilla para habilitar la firma.';
+                    }
+                } else {
+                    chk.disabled = true;
+                    acceptRow.classList.add('locked');
+                    hint.classList.remove('hidden');
+                    consent.classList.add('needs-scroll');
+                    if (chk.checked) {
+                        chk.checked = false;
+                        actualizarFirmaHabilitada();
+                    }
+                    if (acceptHint) {
+                        acceptHint.textContent = 'Primero termina de leer el documento (desliza el recuadro gris hasta abajo).';
+                    }
                 }
+                refreshUxBanner();
             }
+
+            function refreshUxBanner() {
+                if (!scrolledToEnd) {
+                    uxBanner.className = 'ux-banner ux-banner--scroll';
+                    uxBanner.innerHTML =
+                        '<strong>⬇ Paso 1: Lee todo el documento</strong>' +
+                        'Desliza el <b>recuadro gris</b> hacia abajo <b>hasta el final</b>. ' +
+                        'Hasta entonces no podrás marcar la casilla ni firmar.';
+                    uxBanner.classList.remove('hidden');
+                    return;
+                }
+                if (!chk.checked) {
+                    uxBanner.className = 'ux-banner ux-banner--accept';
+                    uxBanner.innerHTML =
+                        '<strong>☑ Paso 2: Acepta el consentimiento</strong>' +
+                        'Marca la casilla naranja de abajo («He leído y acepto…»). Después se habilitará el área de firma.';
+                    uxBanner.classList.remove('hidden');
+                    return;
+                }
+                uxBanner.classList.add('hidden');
+            }
+
+            window.__ataenaMostrarAvisoFirma = function () {
+                refreshUxBanner();
+                uxBanner.classList.remove('hidden');
+                if (!scrolledToEnd) {
+                    consent.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    consent.focus({ preventScroll: true });
+                } else if (!chk.checked) {
+                    acceptRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            };
 
             consent.addEventListener('scroll', checkScrolled);
             window.addEventListener('load', checkScrolled);
             window.addEventListener('resize', checkScrolled);
+
+            acceptRow.addEventListener('click', function (e) {
+                if (!scrolledToEnd) {
+                    e.preventDefault();
+                    window.__ataenaMostrarAvisoFirma();
+                }
+            });
+
+            chk.addEventListener('click', function (e) {
+                if (!scrolledToEnd) {
+                    e.preventDefault();
+                    window.__ataenaMostrarAvisoFirma();
+                }
+            });
 
             function actualizarFirmaHabilitada() {
                 window.__ATAENA_FIRMAS_HABILITADAS__ = chk.checked;
@@ -358,6 +484,7 @@
                 } else {
                     active.classList.add('disabled');
                 }
+                refreshUxBanner();
                 if (chk.checked && typeof window.__ataenaRefrescarCanvasFirma === 'function') {
                     requestAnimationFrame(function () {
                         window.__ataenaRefrescarCanvasFirma();
@@ -366,8 +493,18 @@
             }
 
             chk.addEventListener('change', actualizarFirmaHabilitada);
+
+            [sectionSingle, sectionDual].forEach(function (section) {
+                section.addEventListener('click', function () {
+                    if (section.classList.contains('disabled')) {
+                        window.__ataenaMostrarAvisoFirma();
+                    }
+                });
+            });
+
+            checkScrolled();
         })();
     </script>
-    <script src="/signature.js?v=3"></script>
+    <script src="/signature.js?v=4"></script>
 </body>
 </html>

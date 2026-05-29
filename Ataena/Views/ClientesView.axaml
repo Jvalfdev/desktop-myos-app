@@ -4,6 +4,7 @@
              xmlns:models="using:Ataena.Models"
              xmlns:views="using:Ataena.Views"
              xmlns:converters="using:Ataena.Converters"
+             xmlns:conv="using:Ataena.Converters"
              x:Class="Ataena.Views.ClientesView"
              x:DataType="vm:ClientesViewModel"
              Loaded="OnLoaded">
@@ -31,7 +32,9 @@
         
         <!-- Campo de formulario -->
         <Style Selector="TextBox.form-field">
-            <Setter Property="Margin" Value="0,0,0,15"/>
+            <Setter Property="Margin" Value="0"/>
+            <Setter Property="BorderBrush" Value="#374151"/>
+            <Setter Property="BorderThickness" Value="1"/>
         </Style>
         
         <!-- Los estilos de botones están definidos globalmente en App.axaml -->
@@ -309,45 +312,83 @@
                         <!-- Margen inferior generoso para que los últimos campos (checkboxes) no queden ocultos tras el footer -->
                         <StackPanel Margin="0,0,0,80">
                             <!-- Nombre -->
-                            <TextBlock Text="Nombre *" Opacity="0.7" Margin="0,0,0,5"/>
-                            <TextBox Classes="form-field"
-                                     Text="{Binding Nombre}"
-                                     Watermark="Nombre"/>
+                            <StackPanel Margin="0,0,0,15">
+                                <TextBlock Text="Nombre *" Opacity="0.7" Margin="0,0,0,5"/>
+                                <TextBox Classes="form-field"
+                                         Text="{Binding Nombre}"
+                                         Watermark="Nombre"
+                                         BorderBrush="{Binding ErrorNombre, Converter={x:Static conv:CampoErrorBorderBrushConverter.Instance}}"
+                                         BorderThickness="{Binding ErrorNombre, Converter={x:Static conv:CampoErrorBorderThicknessConverter.Instance}}"/>
+                                <TextBlock Text="{Binding ErrorNombre}"
+                                           Foreground="#ef5350" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0"
+                                           IsVisible="{Binding ErrorNombre, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                            </StackPanel>
 
                             <!-- Apellidos -->
-                            <TextBlock Text="Apellidos *" Opacity="0.7" Margin="16,16,0,5"/>
-                            <TextBox Classes="form-field"
-                                     Text="{Binding Apellidos}"
-                                     Watermark="Apellidos (obligatorio)"/>
+                            <StackPanel Margin="16,0,0,15">
+                                <TextBlock Text="Apellidos *" Opacity="0.7" Margin="0,0,0,5"/>
+                                <TextBox Classes="form-field"
+                                         Text="{Binding Apellidos}"
+                                         Watermark="Apellidos"
+                                         BorderBrush="{Binding ErrorApellidos, Converter={x:Static conv:CampoErrorBorderBrushConverter.Instance}}"
+                                         BorderThickness="{Binding ErrorApellidos, Converter={x:Static conv:CampoErrorBorderThicknessConverter.Instance}}"/>
+                                <TextBlock Text="{Binding ErrorApellidos}"
+                                           Foreground="#ef5350" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0"
+                                           IsVisible="{Binding ErrorApellidos, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                            </StackPanel>
 
                             <!-- Teléfono -->
-                            <TextBlock Text="Teléfono" Opacity="0.7" Margin="16,16,0,5"/>
-                            <TextBox Classes="form-field"
-                                     Text="{Binding Telefono}"
-                                     Watermark="612 345 678 (opcional)"/>
+                            <StackPanel Margin="16,0,0,15">
+                                <TextBlock Text="Teléfono" Opacity="0.7" Margin="0,0,0,5"/>
+                                <TextBox Classes="form-field"
+                                         Text="{Binding Telefono}"
+                                         Watermark="612 345 678 (opcional)"
+                                         BorderBrush="{Binding ErrorTelefono, Converter={x:Static conv:CampoErrorBorderBrushConverter.Instance}}"
+                                         BorderThickness="{Binding ErrorTelefono, Converter={x:Static conv:CampoErrorBorderThicknessConverter.Instance}}"/>
+                                <TextBlock Text="{Binding ErrorTelefono}"
+                                           Foreground="#ef5350" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0"
+                                           IsVisible="{Binding ErrorTelefono, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                            </StackPanel>
 
                             <!-- Email -->
-                            <TextBlock Text="Email" Opacity="0.7" Margin="16,16,0,5"/>
-                            <TextBox Classes="form-field"
-                                     Text="{Binding Email}"
-                                     Watermark="cliente@email.com"/>
+                            <StackPanel Margin="16,0,0,15">
+                                <TextBlock Text="Email" Opacity="0.7" Margin="0,0,0,5"/>
+                                <TextBox Classes="form-field"
+                                         Text="{Binding Email}"
+                                         Watermark="cliente@email.com"
+                                         BorderBrush="{Binding ErrorEmail, Converter={x:Static conv:CampoErrorBorderBrushConverter.Instance}}"
+                                         BorderThickness="{Binding ErrorEmail, Converter={x:Static conv:CampoErrorBorderThicknessConverter.Instance}}"/>
+                                <TextBlock Text="{Binding ErrorEmail}"
+                                           Foreground="#ef5350" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0"
+                                           IsVisible="{Binding ErrorEmail, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                            </StackPanel>
 
                             <!-- DNI/NIE/Pasaporte -->
-                            <TextBlock Text="DNI/NIE/Pasaporte *" Opacity="0.7" Margin="16,16,0,5"/>
-                            <TextBox Classes="form-field"
-                                     Text="{Binding Dni}"
-                                     Watermark="12345678A, X1234567L o número de pasaporte (obligatorio)"/>
+                            <StackPanel Margin="16,0,0,15">
+                                <TextBlock Text="DNI/NIE/Pasaporte *" Opacity="0.7" Margin="0,0,0,5"/>
+                                <TextBox Classes="form-field"
+                                         Text="{Binding Dni}"
+                                         Watermark="12345678A, X1234567L o pasaporte"
+                                         BorderBrush="{Binding ErrorDni, Converter={x:Static conv:CampoErrorBorderBrushConverter.Instance}}"
+                                         BorderThickness="{Binding ErrorDni, Converter={x:Static conv:CampoErrorBorderThicknessConverter.Instance}}"/>
+                                <TextBlock Text="{Binding ErrorDni}"
+                                           Foreground="#ef5350" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0"
+                                           IsVisible="{Binding ErrorDni, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                            </StackPanel>
 
                             <!-- Fecha nacimiento -->
-                            <TextBlock Text="Fecha de nacimiento (DD/MM/YYYY)" Opacity="0.7" Margin="16,16,0,5"/>
-                            <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,15">
+                            <StackPanel Margin="16,0,0,15">
+                            <TextBlock Text="Fecha de nacimiento * (DD/MM/AAAA)" Opacity="0.7" Margin="0,0,0,5"/>
+                            <Grid ColumnDefinitions="*,Auto">
                                 <TextBox Grid.Column="0"
                                          Text="{Binding FechaNacimientoTexto, Mode=TwoWay}"
                                          Watermark="DDMMYYYY (ej: 15031990)"
                                          Classes="form-field"
                                          HorizontalAlignment="Stretch"
                                          Name="FechaNacimientoTextBox"
-                                         TextChanged="OnFechaNacimientoTextChanged"/>
+                                         TextChanged="OnFechaNacimientoTextChanged"
+                                         BorderBrush="{Binding ErrorFechaNacimiento, Converter={x:Static conv:CampoErrorBorderBrushConverter.Instance}}"
+                                         BorderThickness="{Binding ErrorFechaNacimiento, Converter={x:Static conv:CampoErrorBorderThicknessConverter.Instance}}"/>
                                 <Button Grid.Column="1"
                                         Content="📅"
                                         Width="44"
@@ -369,6 +410,10 @@
                                     </Button.Styles>
                                 </Button>
                             </Grid>
+                            <TextBlock Text="{Binding ErrorFechaNacimiento}"
+                                       Foreground="#ef5350" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0"
+                                       IsVisible="{Binding ErrorFechaNacimiento, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                            </StackPanel>
                             <!-- Popup con DatePicker -->
                             <Popup Name="FechaNacimientoPopup"
                                    PlacementTarget="{Binding #FechaNacimientoTextBox}"
@@ -439,32 +484,52 @@
                                     </StackPanel>
                                     
                                     <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
-                                        <StackPanel Grid.Column="0">
-                                            <TextBlock Text="Nombre del tutor *" Opacity="0.7" FontSize="12" Margin="0,0,0,4"/>
+                                        <StackPanel Grid.Column="0" Spacing="4">
+                                            <TextBlock Text="Nombre del tutor *" Opacity="0.7" FontSize="12"/>
                                             <TextBox Text="{Binding NombreTutor}"
                                                      Watermark="Nombre"
-                                                     Height="36"/>
+                                                     Height="36"
+                                                     BorderBrush="{Binding ErrorNombreTutor, Converter={x:Static conv:CampoErrorBorderBrushConverter.Instance}}"
+                                                     BorderThickness="{Binding ErrorNombreTutor, Converter={x:Static conv:CampoErrorBorderThicknessConverter.Instance}}"/>
+                                            <TextBlock Text="{Binding ErrorNombreTutor}"
+                                                       Foreground="#ef5350" FontSize="10" TextWrapping="Wrap"
+                                                       IsVisible="{Binding ErrorNombreTutor, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                                         </StackPanel>
-                                        <StackPanel Grid.Column="1">
-                                            <TextBlock Text="Apellidos del tutor *" Opacity="0.7" FontSize="12" Margin="0,0,0,4"/>
+                                        <StackPanel Grid.Column="1" Spacing="4">
+                                            <TextBlock Text="Apellidos del tutor *" Opacity="0.7" FontSize="12"/>
                                             <TextBox Text="{Binding ApellidosTutor}"
                                                      Watermark="Apellidos"
-                                                     Height="36"/>
+                                                     Height="36"
+                                                     BorderBrush="{Binding ErrorApellidosTutor, Converter={x:Static conv:CampoErrorBorderBrushConverter.Instance}}"
+                                                     BorderThickness="{Binding ErrorApellidosTutor, Converter={x:Static conv:CampoErrorBorderThicknessConverter.Instance}}"/>
+                                            <TextBlock Text="{Binding ErrorApellidosTutor}"
+                                                       Foreground="#ef5350" FontSize="10" TextWrapping="Wrap"
+                                                       IsVisible="{Binding ErrorApellidosTutor, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                                         </StackPanel>
                                     </Grid>
                                     
                                     <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
-                                        <StackPanel Grid.Column="0">
-                                            <TextBlock Text="DNI del tutor *" Opacity="0.7" FontSize="12" Margin="0,0,0,4"/>
+                                        <StackPanel Grid.Column="0" Spacing="4">
+                                            <TextBlock Text="DNI del tutor *" Opacity="0.7" FontSize="12"/>
                                             <TextBox Text="{Binding DniTutor}"
                                                      Watermark="12345678A"
-                                                     Height="36"/>
+                                                     Height="36"
+                                                     BorderBrush="{Binding ErrorDniTutor, Converter={x:Static conv:CampoErrorBorderBrushConverter.Instance}}"
+                                                     BorderThickness="{Binding ErrorDniTutor, Converter={x:Static conv:CampoErrorBorderThicknessConverter.Instance}}"/>
+                                            <TextBlock Text="{Binding ErrorDniTutor}"
+                                                       Foreground="#ef5350" FontSize="10" TextWrapping="Wrap"
+                                                       IsVisible="{Binding ErrorDniTutor, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                                         </StackPanel>
-                                        <StackPanel Grid.Column="1">
-                                            <TextBlock Text="Teléfono del tutor" Opacity="0.7" FontSize="12" Margin="0,0,0,4"/>
+                                        <StackPanel Grid.Column="1" Spacing="4">
+                                            <TextBlock Text="Teléfono del tutor" Opacity="0.7" FontSize="12"/>
                                             <TextBox Text="{Binding TelefonoTutor}"
                                                      Watermark="600123456"
-                                                     Height="36"/>
+                                                     Height="36"
+                                                     BorderBrush="{Binding ErrorTelefonoTutor, Converter={x:Static conv:CampoErrorBorderBrushConverter.Instance}}"
+                                                     BorderThickness="{Binding ErrorTelefonoTutor, Converter={x:Static conv:CampoErrorBorderThicknessConverter.Instance}}"/>
+                                            <TextBlock Text="{Binding ErrorTelefonoTutor}"
+                                                       Foreground="#ef5350" FontSize="10" TextWrapping="Wrap"
+                                                       IsVisible="{Binding ErrorTelefonoTutor, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                                         </StackPanel>
                                     </Grid>
                                 </StackPanel>
@@ -948,54 +1013,35 @@
                                                         </StackPanel>
                                                         <StackPanel Grid.Column="1"
                                                                     Orientation="Horizontal"
-                                                                    Spacing="8"
+                                                                    Spacing="6"
                                                                     IsVisible="{Binding Firmado}">
-                                                            <Button Content="📄"
-                                                                    Classes="btn-secondary"
+                                                            <Button Classes="btn-secondary"
+                                                                    MinWidth="64"
+                                                                    Height="34"
+                                                                    Padding="8,0"
                                                                     Command="{Binding $parent[UserControl].DataContext.AbrirConsentimientoCommand}"
                                                                     CommandParameter="{Binding}"
-                                                                    ToolTip.Tip="Ver PDF"
-                                                                    Width="36"
-                                                                    Height="36"
-                                                                    Padding="0"
-                                                                    FontSize="18"
-                                                                    HorizontalContentAlignment="Center"
-                                                                    VerticalContentAlignment="Center"/>
-                                                            <Button Content="💾"
-                                                                    Classes="btn-secondary"
-                                                                    Command="{Binding $parent[UserControl].DataContext.ExportarConsentimientoCommand}"
-                                                                    CommandParameter="{Binding}"
-                                                                    ToolTip.Tip="Exportar PDF"
-                                                                    Width="36"
-                                                                    Height="36"
-                                                                    Padding="0"
-                                                                    FontSize="18"
-                                                                    HorizontalContentAlignment="Center"
-                                                                    VerticalContentAlignment="Center"/>
-                                                            <Button Content="📧"
-                                                                    Classes="btn-secondary"
-                                                                    Command="{Binding $parent[UserControl].DataContext.EnviarConsentimientoPorCorreoCommand}"
-                                                                    CommandParameter="{Binding}"
-                                                                    ToolTip.Tip="Enviar por correo"
-                                                                    Width="36"
-                                                                    Height="36"
-                                                                    Padding="0"
-                                                                    FontSize="18"
-                                                                    HorizontalContentAlignment="Center"
-                                                                    VerticalContentAlignment="Center"/>
-                                                            <Button Content="🔄"
-                                                                    Classes="btn-secondary"
-                                                                    IsVisible="{Binding NecesitaRenovacion}"
+                                                                    ToolTip.Tip="Abrir PDF">
+                                                                <TextBlock Text="Ver" FontSize="12"/>
+                                                            </Button>
+                                                            <Button Classes="btn-secondary"
+                                                                    MinWidth="76"
+                                                                    Height="34"
+                                                                    Padding="8,0"
                                                                     Command="{Binding $parent[UserControl].DataContext.RenovarConsentimientoCommand}"
                                                                     CommandParameter="{Binding}"
-                                                                    ToolTip.Tip="Renovar consentimiento"
-                                                                    Width="36"
-                                                                    Height="36"
-                                                                    Padding="0"
-                                                                    FontSize="18"
-                                                                    HorizontalContentAlignment="Center"
-                                                                    VerticalContentAlignment="Center"
-                                                                    Background="#10b981"/>
+                                                                    ToolTip.Tip="Firmar de nuevo (sustituye al anterior)">
+                                                                <TextBlock Text="Renovar" FontSize="12"/>
+                                                            </Button>
+                                                            <Button Classes="btn-danger"
+                                                                    MinWidth="68"
+                                                                    Height="34"
+                                                                    Padding="8,0"
+                                                                    Command="{Binding $parent[UserControl].DataContext.EliminarConsentimientoCommand}"
+                                                                    CommandParameter="{Binding}"
+                                                                    ToolTip.Tip="Eliminar consentimiento y PDF">
+                                                                <TextBlock Text="Borrar" FontSize="12"/>
+                                                            </Button>
                                                         </StackPanel>
                                                     </Grid>
                                                 </Border>

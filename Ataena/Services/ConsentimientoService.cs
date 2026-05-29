@@ -321,6 +321,17 @@ public static class ConsentimientoService
                     page.Margin(2f, Unit.Centimetre);
                     page.DefaultTextStyle(x => x.FontSize(11).FontFamily("Helvetica"));
 
+                    page.Footer()
+                        .AlignCenter()
+                        .Text(text =>
+                        {
+                            text.DefaultTextStyle(x => x.FontSize(9).FontColor(Colors.Grey.Medium));
+                            text.Span("Página ");
+                            text.CurrentPageNumber();
+                            text.Span(" de ");
+                            text.TotalPages();
+                        });
+
                     page.Content()
                         .Column(column =>
                         {
@@ -491,6 +502,65 @@ public static class ConsentimientoService
             Log.Error(ex, "Error al guardar consentimiento");
             return false;
         }
+    }
+
+    /// <summary>
+    /// Elimina un consentimiento de la base de datos y su PDF en disco.
+    /// </summary>
+    public static async Task<(bool Exito, TipoConsentimiento Tipo, int ClienteId)> EliminarConsentimientoAsync(
+        AtaenaDbContext db,
+        int consentimientoId)
+    {
+        var consentimiento = await db.Consentimientos
+            .AsNoTracking()
+            .FirstOrDefaultAsync(c => c.Id == consentimientoId);
+
+        if (consentimiento == null)
+            return (false, default, 0);
+
+        var tracked = await db.Consentimientos.FindAsync(consentimientoId);
+        if (tracked == null)
+            return (false, default, 0);
+
+        if (!string.IsNullOrEmpty(tracked.RutaDocumento) && File.Exists(tracked.RutaDocumento))
+        {
+            try
+            {
+                File.Delete(tracked.RutaDocumento);
+                Log.Information("PDF de consentimiento eliminado: {Ruta}", tracked.RutaDocumento);
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "No se pudo borrar el PDF: {Ruta}", tracked.RutaDocumento);
+            }
+        }
+
+        var tipo = tracked.Tipo;
+        var clienteId = tracked.ClienteId;
+        db.Consentimientos.Remove(tracked);
+        await db.SaveChangesAsync();
+
+        Log.Warning("Consentimiento eliminado: Id={Id}, Tipo={Tipo}, ClienteId={ClienteId}",
+            consentimientoId, tipo, clienteId);
+
+        return (true, tipo, clienteId);
+    }
+
+    /// <summary>
+    /// Mensaje de aviso tras borrar un consentimiento (el cliente deja de tenerlo firmado).
+    /// </summary>
+    public static string MensajeAvisoTrasEliminar(TipoConsentimiento tipo, string nombreCliente)
+    {
+        return tipo switch
+        {
+            TipoConsentimiento.RGPD or TipoConsentimiento.RGPD_Menor =>
+                $"{nombreCliente} ya no tiene consentimiento RGPD firmado. El sistema te avisará hasta que se vuelva a firmar.",
+            TipoConsentimiento.Imagenes or TipoConsentimiento.Imagenes_Menor =>
+                $"{nombreCliente} ya no tiene consentimiento de uso de imágenes. No podrás tomar fotos de trabajo hasta firmarlo de nuevo.",
+            TipoConsentimiento.Trabajo or TipoConsentimiento.Trabajo_Menor =>
+                "Este trabajo ya no tiene consentimiento firmado. Deberás firmarlo de nuevo antes de operar con él como documento legal.",
+            _ => "El consentimiento se ha eliminado. Revisa la ficha del cliente."
+        };
     }
 }
 

@@ -1,7 +1,10 @@
 using System;
 using System.IO;
 using System.Threading.Tasks;
+using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Media.Imaging;
+using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -211,12 +214,11 @@ public partial class FotoTrabajoViewModel : ViewModelBase
                 return;
             }
 
-            Log.Information("Foto recibida para token {Token}, tamaño base64: {Tamaño} caracteres", 
+            Log.Information("Foto recibida para token {Token}, tamaño base64: {Tamaño} caracteres",
                 _tokenActual, imagenBase64.Length);
 
-            EstadoConexion = "📥 Recibiendo foto...";
+            await Dispatcher.UIThread.InvokeAsync(() => EstadoConexion = "📥 Recibiendo foto...");
 
-            // Decodificar y guardar JPEG
             byte[] bytes;
             try
             {
@@ -225,51 +227,146 @@ public partial class FotoTrabajoViewModel : ViewModelBase
             }
             catch (FormatException ex)
             {
-                Log.Error(ex, "Error al decodificar base64. Primeros 100 caracteres: {Preview}", 
+                Log.Error(ex, "Error al decodificar base64. Primeros 100 caracteres: {Preview}",
                     imagenBase64.Length > 100 ? imagenBase64.Substring(0, 100) : imagenBase64);
-                MensajeError = "Error: El formato de la imagen no es válido. Intenta con otra foto.";
-                EstadoConexion = "❌ Error al procesar la imagen";
+                await Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    MensajeError = "Error: El formato de la imagen no es válido. Intenta con otra foto.";
+                    EstadoConexion = "❌ Error al procesar la imagen";
+                });
                 return;
             }
 
-            var ruta = _esAntes
-                ? ConsentimientoPathService.ObtenerRutaFotoAntes(_trabajo.ClienteId, _trabajo.Id)
-                : ConsentimientoPathService.ObtenerRutaFotoDespues(_trabajo.ClienteId, _trabajo.Id);
+            var guardado = await GuardarFotoEnTrabajoAsync(bytes).ConfigureAwait(false);
+            if (guardado == null)
+                return;
 
-            Log.Information("Guardando foto en: {Ruta}", ruta);
+            await FinalizarTrasFotoGuardadaAsync(guardado, "✅ Foto recibida y guardada correctamente")
+                .ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error al recibir/guardar foto de trabajo. Token: {Token}, Trabajo: {TrabajoId}", 
+                _tokenActual, _trabajo?.Id);
+            MensajeError = $"Error al guardar la foto: {ex.Message}";
+            EstadoConexion = "❌ Error al guardar la foto";
+        }
+    }
 
-            var directorio = Path.GetDirectoryName(ruta);
-            if (!string.IsNullOrEmpty(directorio))
+    /// <summary>
+    /// Selecciona una imagen del disco y la guarda como foto antes/después del trabajo.
+    /// </summary>
+    [RelayCommand]
+    private async Task SubirDesdeOrdenadorAsync()
+    {
+        if (_trabajo == null)
+        {
+            MensajeError = "No hay trabajo seleccionado.";
+            return;
+        }
+
+        try
+        {
+            var topLevel = Avalonia.Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
+                ? desktop.MainWindow
+                : null;
+
+            if (topLevel == null)
             {
-                Directory.CreateDirectory(directorio);
+                MensajeError = "No se pudo abrir el selector de archivos.";
+                return;
             }
 
-            await File.WriteAllBytesAsync(ruta, bytes);
-            Log.Information("Foto guardada en disco: {Ruta}, {Tamaño} bytes", ruta, bytes.Length);
-
-            // Actualizar trabajo en BD
-            var trabajoDb = await _db.Trabajos.FirstOrDefaultAsync(t => t.Id == _trabajo.Id);
-            if (trabajoDb == null)
+            var tipo = _esAntes ? "ANTES" : "DESPUÉS";
+            var archivos = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
             {
-                Log.Error("No se encontró el trabajo {TrabajoId} en la base de datos", _trabajo.Id);
+                Title = $"Seleccionar foto {tipo} del trabajo",
+                AllowMultiple = false,
+                FileTypeFilter =
+                [
+                    new FilePickerFileType("Imágenes")
+                    {
+                        Patterns = ["*.jpg", "*.jpeg", "*.png", "*.bmp", "*.gif", "*.webp"]
+                    }
+                ]
+            });
+
+            if (archivos == null || archivos.Count == 0)
+                return;
+
+            EstaProcesando = true;
+            EstadoConexion = "📥 Procesando imagen...";
+            MensajeError = string.Empty;
+
+            await using var stream = await archivos[0].OpenReadAsync();
+            using var memoryStream = new MemoryStream();
+            await stream.CopyToAsync(memoryStream);
+            var bytes = memoryStream.ToArray();
+
+            if (bytes.Length == 0)
+            {
+                MensajeError = "El archivo seleccionado está vacío.";
+                EstadoConexion = "❌ Error al subir la foto";
+                return;
+            }
+
+            var guardado = await GuardarFotoEnTrabajoAsync(bytes);
+            if (guardado == null)
+                return;
+
+            await FinalizarTrasFotoGuardadaAsync(guardado, "✅ Foto guardada desde el PC");
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error al subir foto de trabajo desde ordenador");
+            MensajeError = $"Error al subir la foto: {ex.Message}";
+            EstadoConexion = "❌ Error al subir la foto";
+        }
+        finally
+        {
+            EstaProcesando = false;
+        }
+    }
+
+    /// <summary>
+    /// Escribe la imagen en disco y actualiza el trabajo en base de datos.
+    /// </summary>
+    private async Task<Trabajo?> GuardarFotoEnTrabajoAsync(byte[] bytes)
+    {
+        if (_trabajo == null)
+            return null;
+
+        var ruta = _esAntes
+            ? ConsentimientoPathService.ObtenerRutaFotoAntes(_trabajo.ClienteId, _trabajo.Id)
+            : ConsentimientoPathService.ObtenerRutaFotoDespues(_trabajo.ClienteId, _trabajo.Id);
+
+        var directorio = Path.GetDirectoryName(ruta);
+        if (!string.IsNullOrEmpty(directorio))
+            Directory.CreateDirectory(directorio);
+
+        await File.WriteAllBytesAsync(ruta, bytes);
+        Log.Information("Foto de trabajo guardada en: {Ruta}, {Tamaño} bytes", ruta, bytes.Length);
+
+        var trabajoDb = await _db.Trabajos.FirstOrDefaultAsync(t => t.Id == _trabajo.Id);
+        if (trabajoDb == null)
+        {
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
                 MensajeError = "Error: No se encontró el trabajo en la base de datos.";
                 EstadoConexion = "❌ Error al actualizar el trabajo";
-                return;
-            }
+            });
+            return null;
+        }
 
-            if (_esAntes)
-            {
-                trabajoDb.FotoAntesPath = ruta;
-            }
-            else
-            {
-                trabajoDb.FotoDespuesPath = ruta;
-            }
+        if (_esAntes)
+            trabajoDb.FotoAntesPath = ruta;
+        else
+            trabajoDb.FotoDespuesPath = ruta;
 
-            await _db.SaveChangesAsync();
-            Log.Information("Trabajo actualizado en BD con ruta de foto: {Ruta}", ruta);
+        await _db.SaveChangesAsync();
 
-            // Refrescar instancia local y UI
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
             if (_esAntes)
             {
                 _trabajo.FotoAntesPath = ruta;
@@ -282,25 +379,22 @@ public partial class FotoTrabajoViewModel : ViewModelBase
                 PreviewFotoDespues = CargarBitmapDesdeRuta(ruta);
                 OnPropertyChanged(nameof(PreviewFotoDespues));
             }
+        });
 
-            Log.Information("✅ Foto de trabajo guardada correctamente en {Ruta}", ruta);
-            EstadoConexion = "✅ Foto recibida y guardada correctamente";
-            MensajeError = string.Empty; // Limpiar errores previos
+        return trabajoDb;
+    }
 
-            // Disparar evento para notificar que se guardó la foto
-            FotoGuardada?.Invoke(this, trabajoDb);
-
-            // Cerrar el modal automáticamente después de un breve delay para que el usuario vea el mensaje de éxito
-            await Task.Delay(1500);
-            Cerrar();
-        }
-        catch (Exception ex)
+    private async Task FinalizarTrasFotoGuardadaAsync(Trabajo trabajoDb, string mensajeExito)
+    {
+        await Dispatcher.UIThread.InvokeAsync(() =>
         {
-            Log.Error(ex, "Error al recibir/guardar foto de trabajo. Token: {Token}, Trabajo: {TrabajoId}", 
-                _tokenActual, _trabajo?.Id);
-            MensajeError = $"Error al guardar la foto: {ex.Message}";
-            EstadoConexion = "❌ Error al guardar la foto";
-        }
+            EstadoConexion = mensajeExito;
+            MensajeError = string.Empty;
+            FotoGuardada?.Invoke(this, trabajoDb);
+        });
+
+        await Task.Delay(1500);
+        await Dispatcher.UIThread.InvokeAsync(Cerrar);
     }
 
     [RelayCommand]

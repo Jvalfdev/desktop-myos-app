@@ -14,12 +14,12 @@
                 Padding="32"
                 MinWidth="520"
                 MaxWidth="860"
-                MaxHeight="700"
+                MaxHeight="820"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
                 BoxShadow="0 0 30 5 #a855f7, 0 0 50 8 #f97316">
             
-            <Grid RowDefinitions="Auto,*,Auto">
+            <Grid RowDefinitions="Auto,*,Auto,Auto">
                 
                 <!-- Header -->
                 <Border Grid.Row="0"
@@ -111,12 +111,6 @@
                                        FontSize="13"/>
                         </Border>
 
-                        <!-- Checkbox aceptar términos -->
-                        <CheckBox Content="☑ Acepto los términos y condiciones"
-                                  IsChecked="{Binding AceptaTerminos}"
-                                  FontSize="14"
-                                  FontWeight="SemiBold"/>
-
                         <!-- Separador -->
                         <Border Height="1"
                                 Background="#3a3a4e"
@@ -181,62 +175,73 @@
                                        TextWrapping="Wrap"
                                        Margin="4,6,4,4"
                                        HorizontalAlignment="Center"/>
-
-                            <!-- Preview de firma recibida -->
-                            <Border IsVisible="{Binding FirmaRecibida}"
-                                    Background="#1a4d2e"
-                                    CornerRadius="12"
-                                    Padding="15"
-                                    BorderBrush="#10b981"
-                                    BorderThickness="2">
-                                <StackPanel Spacing="12">
-                                    <TextBlock Text="✅ Firma(s) recibida(s)"
-                                               FontSize="14"
-                                               FontWeight="Bold"
-                                               Foreground="#10b981"/>
-                                    <StackPanel IsVisible="{Binding EsConsentimientoMenor}" Spacing="10">
-                                        <TextBlock Text="REPRESENTANTE LEGAL"
-                                                   FontWeight="Heavy"
-                                                   Foreground="#a7f3d0"/>
-                                        <Border Background="White"
-                                                CornerRadius="8"
-                                                Padding="10"
-                                                HorizontalAlignment="Stretch">
-                                            <Image Source="{Binding VistaPreviaRepresentanteDataUrl}"
-                                                   MaxHeight="140"
-                                                   Stretch="Uniform"/>
-                                        </Border>
-                                        <TextBlock Text="MENOR"
-                                                   FontWeight="Heavy"
-                                                   Foreground="#a7f3d0"/>
-                                        <Border Background="White"
-                                                CornerRadius="8"
-                                                Padding="10"
-                                                HorizontalAlignment="Stretch">
-                                            <Image Source="{Binding VistaPreviaMenorDataUrl}"
-                                                   MaxHeight="140"
-                                                   Stretch="Uniform"/>
-                                        </Border>
-                                    </StackPanel>
-                                    <StackPanel IsVisible="{Binding !EsConsentimientoMenor}">
-                                        <Border Background="White"
-                                                CornerRadius="8"
-                                                Padding="10"
-                                                HorizontalAlignment="Center">
-                                            <Image Source="{Binding VistaPreviaRepresentanteDataUrl}"
-                                                   MaxWidth="300"
-                                                   MaxHeight="150"
-                                                   Stretch="Uniform"/>
-                                        </Border>
-                                    </StackPanel>
-                                </StackPanel>
-                            </Border>
                         </StackPanel>
                     </StackPanel>
                 </ScrollViewer>
 
-                <!-- Footer con botones -->
+                <!-- Preview de firma (fila fija: no queda detrás del footer ni al final del scroll) -->
                 <Border Grid.Row="2"
+                        IsVisible="{Binding FirmaRecibida}"
+                        Background="#1a4d2e"
+                        CornerRadius="12"
+                        Padding="16,12"
+                        Margin="24,0,24,8"
+                        BorderBrush="#10b981"
+                        BorderThickness="2"
+                        MaxHeight="280">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel Spacing="10">
+                            <TextBlock Text="✅ Firma(s) recibida(s)"
+                                       FontSize="14"
+                                       FontWeight="Bold"
+                                       Foreground="#10b981"
+                                       TextWrapping="Wrap"/>
+                            <StackPanel IsVisible="{Binding EsConsentimientoMenor}" Spacing="8">
+                                <TextBlock Text="REPRESENTANTE LEGAL"
+                                           FontWeight="Heavy"
+                                           Foreground="#a7f3d0"
+                                           TextWrapping="Wrap"/>
+                                <Border Background="White"
+                                        CornerRadius="8"
+                                        Padding="8"
+                                        HorizontalAlignment="Stretch">
+                                    <Image Source="{Binding VistaPreviaRepresentanteDataUrl}"
+                                           MaxHeight="100"
+                                           Stretch="Uniform"
+                                           HorizontalAlignment="Center"/>
+                                </Border>
+                                <TextBlock Text="MENOR"
+                                           FontWeight="Heavy"
+                                           Foreground="#a7f3d0"
+                                           TextWrapping="Wrap"/>
+                                <Border Background="White"
+                                        CornerRadius="8"
+                                        Padding="8"
+                                        HorizontalAlignment="Stretch">
+                                    <Image Source="{Binding VistaPreviaMenorDataUrl}"
+                                           MaxHeight="100"
+                                           Stretch="Uniform"
+                                           HorizontalAlignment="Center"/>
+                                </Border>
+                            </StackPanel>
+                            <StackPanel IsVisible="{Binding !EsConsentimientoMenor}">
+                                <Border Background="White"
+                                        CornerRadius="8"
+                                        Padding="8"
+                                        HorizontalAlignment="Stretch">
+                                    <Image Source="{Binding VistaPreviaRepresentanteDataUrl}"
+                                           MaxHeight="120"
+                                           Stretch="Uniform"
+                                           HorizontalAlignment="Center"/>
+                                </Border>
+                            </StackPanel>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Border>
+
+                <!-- Footer con botones -->
+                <Border Grid.Row="3"
                         Background="#2a2a3e"
                         Padding="20,16"
                         CornerRadius="0,0,18,18">
@@ -267,29 +272,6 @@
                                        TextWrapping="Wrap"
                                        TextAlignment="Center"/>
                         </Button>
-                        <!-- Botones después de generar PDF -->
-                        <Button Classes="btn-secondary"
-                                Command="{Binding ImprimirPdfCommand}"
-                                IsEnabled="{Binding !EstaProcesando}"
-                                IsVisible="{Binding MostrarImprimir}"
-                                MinWidth="140"
-                                MinHeight="46"
-                                Padding="16,10"
-                                HorizontalContentAlignment="Center"
-                                VerticalContentAlignment="Center">
-                            <TextBlock Text="🖨️ Imprimir"
-                                       TextWrapping="Wrap"
-                                       TextAlignment="Center"/>
-                        </Button>
-                        <Button Classes="btn-primary"
-                                Command="{Binding CancelarFirmaCommand}"
-                                IsVisible="{Binding PdfGenerado}"
-                                MinWidth="130"
-                                MinHeight="46"
-                                Padding="16,10"
-                                HorizontalContentAlignment="Center"
-                                VerticalContentAlignment="Center"
-                                Content="Cerrar"/>
                     </StackPanel>
                 </Border>
             </Grid>

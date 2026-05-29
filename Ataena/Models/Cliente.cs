@@ -32,12 +32,12 @@ public class Cliente
     public string Nombre { get; set; } = string.Empty;
 
     /// <summary>
-    /// Apellidos del cliente.
+    /// Apellidos del cliente. Campo obligatorio.
     /// </summary>
     public string Apellidos { get; set; } = string.Empty;
 
     /// <summary>
-    /// Número de teléfono. Campo obligatorio y único.
+    /// Número de teléfono (opcional en alta; se valida el formato si se indica).
     /// </summary>
     public string Telefono { get; set; } = string.Empty;
 
@@ -48,13 +48,12 @@ public class Cliente
     public string? Email { get; set; }
 
     /// <summary>
-    /// Documento Nacional de Identidad (opcional).
+    /// Documento Nacional de Identidad (DNI/NIE/pasaporte). Campo obligatorio.
     /// </summary>
     public string? Dni { get; set; }
 
     /// <summary>
-    /// Fecha de nacimiento (opcional).
-    /// Importante para verificar mayoría de edad.
+    /// Fecha de nacimiento. Campo obligatorio (mayoría de edad, menores, consentimientos).
     /// </summary>
     public DateTime? FechaNacimiento { get; set; }
 

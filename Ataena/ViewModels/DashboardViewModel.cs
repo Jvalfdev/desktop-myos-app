@@ -344,10 +344,11 @@ public partial class DashboardViewModel : ViewModelBase
             alertas.Add($"📅 {citasManana} cita(s) sin confirmar para mañana");
         }
 
-        // Alerta: Clientes sin consentimiento RGPD firmado
+        // Alerta: clientes sin RGPD vigente (mayores: RGPD; menores: RGPD_Menor)
         var sinRgpd = await _db.Clientes
-            .CountAsync(c => c.Activo && !c.Consentimientos.Any(
-                con => con.Tipo == TipoConsentimiento.RGPD && con.Firmado));
+            .CountAsync(c => c.Activo && !c.Consentimientos.Any(con =>
+                (con.Tipo == TipoConsentimiento.RGPD || con.Tipo == TipoConsentimiento.RGPD_Menor) &&
+                con.Firmado));
 
         if (sinRgpd > 0)
         {

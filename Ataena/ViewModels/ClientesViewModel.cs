@@ -176,21 +176,15 @@ public partial class ClientesViewModel : ViewModelBase
                     {
                         // Año no bisiesto con 29 de febrero: mostrar error pero no bloquear
                         Log.Warning("Fecha inválida: 29 de febrero en año no bisiesto ({Año})", fecha.Year);
-                        MensajeError = $"⚠️ El año {fecha.Year} no es bisiesto. El 29 de febrero no existe en ese año.";
+                        var msgBisiesto = $"El año {fecha.Year} no es bisiesto (29/02 no existe).";
+                        MensajeError = msgBisiesto;
+                        ErrorFechaNacimiento = msgBisiesto;
                         return; // No actualizar la fecha
                     }
                 }
 
-                var nuevaFecha = new DateTimeOffset(fecha);
-                // Solo actualizar si es diferente para evitar bucles
-                if (!FechaNacimiento.HasValue || FechaNacimiento.Value.Date != nuevaFecha.Date)
-                {
-                    _actualizandoFechaDesdeTexto = true;
-                    FechaNacimiento = nuevaFecha;
-                    _actualizandoFechaDesdeTexto = false;
-                    MensajeError = string.Empty; // Limpiar error si la fecha es válida
-                }
-                return;
+                if (AplicarFechaNacimientoSiValida(fecha))
+                    return;
             }
         }
 
@@ -205,21 +199,45 @@ public partial class ClientesViewModel : ViewModelBase
                 {
                     // Año no bisiesto con 29 de febrero: mostrar error pero no bloquear
                     Log.Warning("Fecha inválida: 29 de febrero en año no bisiesto ({Año})", fechaFlexible.Year);
-                    MensajeError = $"⚠️ El año {fechaFlexible.Year} no es bisiesto. El 29 de febrero no existe en ese año.";
+                    var msgBisiestoFlex = $"El año {fechaFlexible.Year} no es bisiesto (29/02 no existe).";
+                    MensajeError = msgBisiestoFlex;
+                    ErrorFechaNacimiento = msgBisiestoFlex;
                     return; // No actualizar la fecha
                 }
             }
 
-            var nuevaFecha = new DateTimeOffset(fechaFlexible);
-            if (!FechaNacimiento.HasValue || FechaNacimiento.Value.Date != nuevaFecha.Date)
-            {
-                _actualizandoFechaDesdeTexto = true;
-                FechaNacimiento = nuevaFecha;
-                _actualizandoFechaDesdeTexto = false;
-                MensajeError = string.Empty; // Limpiar error si la fecha es válida
-            }
+            AplicarFechaNacimientoSiValida(fechaFlexible);
         }
+
+        ValidarFechaNacimiento();
         // Si no se puede parsear, no actualizamos FechaNacimiento (permitimos texto parcial mientras se escribe)
+    }
+
+    /// <summary>
+    /// Aplica la fecha de nacimiento si es válida (no futura). Devuelve true si se aplicó.
+    /// </summary>
+    private bool AplicarFechaNacimientoSiValida(DateTime fecha)
+    {
+        if (fecha.Date > DateTime.Today)
+        {
+            const string msg = "La fecha de nacimiento no puede ser posterior a hoy.";
+            MensajeError = msg;
+            ErrorFechaNacimiento = msg;
+            return true;
+        }
+
+        var nuevaFecha = new DateTimeOffset(fecha.Date);
+        if (!FechaNacimiento.HasValue || FechaNacimiento.Value.Date != nuevaFecha.Date)
+        {
+            _actualizandoFechaDesdeTexto = true;
+            FechaNacimiento = nuevaFecha;
+            _actualizandoFechaDesdeTexto = false;
+            MensajeError = string.Empty;
+            ErrorFechaNacimiento = string.Empty;
+        }
+
+        ValidarFechaNacimiento();
+        return true;
     }
 
     private bool _actualizandoFechaDesdeTexto = false;
@@ -232,13 +250,33 @@ public partial class ClientesViewModel : ViewModelBase
     {
         // Notificar cambio en EsMenorFormulario para mostrar/ocultar datos del tutor
         OnPropertyChanged(nameof(EsMenorFormulario));
+        ValidarFechaNacimiento();
+        if (EsMenorFormulario)
+        {
+            ValidarNombreTutor();
+            ValidarApellidosTutor();
+            ValidarDniTutor();
+        }
         
         // Evitar bucle infinito: si estamos actualizando desde el texto, no actualizar el texto
         if (_actualizandoFechaDesdeTexto)
             return;
 
+        if (value.HasValue && value.Value.Date > DateTime.Today)
+        {
+            const string msg = "La fecha de nacimiento no puede ser posterior a hoy.";
+            MensajeError = msg;
+            ErrorFechaNacimiento = msg;
+            _actualizandoFechaDesdeTexto = true;
+            FechaNacimiento = null;
+            _actualizandoFechaDesdeTexto = false;
+            return;
+        }
+
         if (value.HasValue)
         {
+            MensajeError = string.Empty;
+            ErrorFechaNacimiento = string.Empty;
             var texto = value.Value.ToString("dd/MM/yyyy");
             if (FechaNacimientoTexto != texto)
             {
@@ -270,6 +308,58 @@ public partial class ClientesViewModel : ViewModelBase
 
     [ObservableProperty]
     private string _notas = string.Empty;
+
+    /// <summary>
+    /// Tras intentar guardar, se muestran errores también en campos vacíos obligatorios.
+    /// Obligatorios: nombre, apellidos, DNI, fecha de nacimiento (+ tutor si es menor).
+    /// Opcionales con formato: teléfono, email, teléfono del tutor.
+    /// </summary>
+    [ObservableProperty]
+    private bool _validacionFormularioActiva;
+
+    private static readonly string[] FormatosFechaNacimiento =
+        { "dd/MM/yyyy", "dd-MM-yyyy", "d/M/yyyy", "d-M-yyyy" };
+
+    [ObservableProperty]
+    private string _errorNombre = string.Empty;
+
+    [ObservableProperty]
+    private string _errorApellidos = string.Empty;
+
+    [ObservableProperty]
+    private string _errorTelefono = string.Empty;
+
+    [ObservableProperty]
+    private string _errorEmail = string.Empty;
+
+    [ObservableProperty]
+    private string _errorDni = string.Empty;
+
+    [ObservableProperty]
+    private string _errorFechaNacimiento = string.Empty;
+
+    [ObservableProperty]
+    private string _errorNombreTutor = string.Empty;
+
+    [ObservableProperty]
+    private string _errorApellidosTutor = string.Empty;
+
+    [ObservableProperty]
+    private string _errorDniTutor = string.Empty;
+
+    [ObservableProperty]
+    private string _errorTelefonoTutor = string.Empty;
+
+    partial void OnNombreChanged(string value) => ValidarNombre();
+    partial void OnApellidosChanged(string value) => ValidarApellidos();
+    partial void OnTelefonoChanged(string value) => ValidarTelefono();
+    partial void OnEmailChanged(string value) => ValidarEmail();
+    partial void OnDniChanged(string value) => ValidarDni();
+
+    partial void OnNombreTutorChanged(string value) => ValidarNombreTutor();
+    partial void OnApellidosTutorChanged(string value) => ValidarApellidosTutor();
+    partial void OnDniTutorChanged(string value) => ValidarDniTutor();
+    partial void OnTelefonoTutorChanged(string value) => ValidarTelefonoTutor();
 
     #endregion
 
@@ -693,76 +783,19 @@ public partial class ClientesViewModel : ViewModelBase
     {
         try
         {
-            // Validación de campos obligatorios
-            if (string.IsNullOrWhiteSpace(Nombre))
+            ValidacionFormularioActiva = true;
+            if (!ValidarFormularioCompleto())
             {
-                MensajeError = "El nombre es obligatorio";
+                MensajeError = ObtenerPrimerMensajeErrorFormulario();
                 return;
             }
+
+            if (!FechaNacimiento.HasValue && TryParseFechaNacimientoTexto(out var fechaDesdeTexto))
+                FechaNacimiento = new DateTimeOffset(fechaDesdeTexto.Date);
 
             var nombreTrimmed = Nombre.Trim();
-            if (nombreTrimmed.Length < 2)
-            {
-                MensajeError = "El nombre debe tener al menos 2 caracteres";
-                return;
-            }
-
-            if (string.IsNullOrWhiteSpace(Apellidos))
-            {
-                MensajeError = "Los apellidos son obligatorios";
-                return;
-            }
-
             var apellidosTrimmed = Apellidos.Trim();
-            if (apellidosTrimmed.Length < 2)
-            {
-                MensajeError = "Los apellidos deben tener al menos 2 caracteres";
-                return;
-            }
-
-            // DNI/NIE/Pasaporte es obligatorio
-            if (string.IsNullOrWhiteSpace(Dni))
-            {
-                MensajeError = "El documento de identidad (DNI/NIE/Pasaporte) es obligatorio";
-                return;
-            }
-
-            // Normalizar DNI: eliminar espacios y convertir a mayúsculas
             var dniTrimmed = Dni.Trim().ToUpperInvariant();
-
-            // Validar formato de DNI/NIE (si no es válido, puede ser un pasaporte)
-            if (!EsDniNieValido(dniTrimmed))
-            {
-                // Si no es DNI/NIE válido, verificar que tenga al menos algún formato razonable (mínimo 5 caracteres)
-                if (dniTrimmed.Length < 5)
-                {
-                    MensajeError = "El documento de identidad debe tener al menos 5 caracteres. Formato: 12345678A (DNI), X1234567L (NIE) o número de pasaporte";
-                    return;
-                }
-                // Si tiene más de 5 caracteres, asumimos que es un pasaporte (no validamos formato específico)
-            }
-
-            // Validar teléfono (opcional, pero si se proporciona debe tener formato válido)
-            if (!string.IsNullOrWhiteSpace(Telefono))
-            {
-                var telefonoTrimmed = Telefono.Trim();
-                if (!EsTelefonoValido(telefonoTrimmed))
-                {
-                    MensajeError = "El formato del teléfono no es válido. Formato: 612345678 o +34612345678";
-                    return;
-                }
-            }
-
-            // Validar email (opcional, pero si se proporciona debe tener formato válido)
-            if (!string.IsNullOrWhiteSpace(Email))
-            {
-                var emailTrimmed = Email.Trim();
-                if (!EsEmailValido(emailTrimmed))
-                {
-                    MensajeError = "El formato del email no es válido. Ejemplo: cliente@email.com";
-                    return;
-                }
-            }
 
             // Verificar que el DNI/Pasaporte no esté duplicado (para nuevos clientes o si cambió)
             var clienteIdActual = EsEdicion && ClienteSeleccionado != null ? ClienteSeleccionado.Id : 0;
@@ -774,15 +807,16 @@ public partial class ClientesViewModel : ViewModelBase
                 
                 if (dniDuplicado)
                 {
-                    MensajeError = "Ya existe un cliente con ese documento de identidad.";
+                    ErrorDni = "Ya existe un cliente con ese documento de identidad.";
+                    MensajeError = ErrorDni;
                     return;
                 }
             }
 
-            // Teléfono y email son opcionales; no se valida unicidad de teléfono.
-
             Cargando = true;
             MensajeError = string.Empty;
+            LimpiarErroresCampos();
+            ValidacionFormularioActiva = false;
 
             Cliente clienteGuardado;
 
@@ -1359,6 +1393,8 @@ public partial class ClientesViewModel : ViewModelBase
         MostrarFormulario = false;
         MostrarFicha = false;
         MensajeError = string.Empty;
+        LimpiarErroresCampos();
+        ValidacionFormularioActiva = false;
     }
 
     /// <summary>
@@ -1618,6 +1654,52 @@ public partial class ClientesViewModel : ViewModelBase
         {
             Log.Error(ex, "Error al renovar consentimiento {ConsentimientoId}", consentimientoAnterior.Id);
             MensajeError = $"Error al renovar consentimiento: {ex.Message}";
+        }
+    }
+
+    /// <summary>
+    /// Elimina un consentimiento firmado y su PDF. El cliente deja de tener ese consentimiento vigente.
+    /// </summary>
+    [RelayCommand]
+    private async Task EliminarConsentimiento(Consentimiento? consentimiento)
+    {
+        if (consentimiento == null || ClienteSeleccionado == null || !consentimiento.Firmado)
+            return;
+
+        var mensaje =
+            $"Se eliminará el consentimiento «{consentimiento.NombreTipo}» y su PDF.\n\n" +
+            ConsentimientoService.MensajeAvisoTrasEliminar(consentimiento.Tipo, ClienteSeleccionado.NombreCompleto) +
+            "\n\nEsta acción no se puede deshacer.";
+
+        var confirmado = await DialogService.ConfirmarAccionAsync(
+            titulo: "Eliminar consentimiento",
+            mensaje: mensaje,
+            botonConfirmar: "Sí, eliminar",
+            esPeligroso: true);
+
+        if (!confirmado)
+            return;
+
+        try
+        {
+            var (exito, _, _) = await ConsentimientoService.EliminarConsentimientoAsync(_db, consentimiento.Id);
+            if (!exito)
+            {
+                MensajeError = "No se pudo eliminar el consentimiento.";
+                return;
+            }
+
+            await CargarClientes();
+            await RefrescarFichaClientePorIdAsync(ClienteSeleccionado.Id);
+
+            OverlayNotificationService.Mostrar(
+                ConsentimientoService.MensajeAvisoTrasEliminar(consentimiento.Tipo, ClienteSeleccionado.NombreCompleto),
+                OverlayNotificationKind.Warning);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error al eliminar consentimiento {ConsentimientoId}", consentimiento.Id);
+            MensajeError = $"Error al eliminar: {ex.Message}";
         }
     }
 
@@ -1906,6 +1988,8 @@ public partial class ClientesViewModel : ViewModelBase
         TelefonoTutor = string.Empty;
         
         MensajeError = string.Empty;
+        LimpiarErroresCampos();
+        ValidacionFormularioActiva = false;
         SolicitarConsentimientoImagenes = false;
         PermiteFotosTrabajo = true;
         FirmarConsentimientoRGPD = false;
@@ -1936,7 +2020,291 @@ public partial class ClientesViewModel : ViewModelBase
         TelefonoTutor = cliente.TelefonoTutor ?? string.Empty;
         
         MensajeError = string.Empty;
+        LimpiarErroresCampos();
+        ValidacionFormularioActiva = false;
         PermiteFotosTrabajo = cliente.PermiteFotosTrabajo;
+    }
+
+    #endregion
+
+    #region Validación por campo (chivatos)
+
+    private void LimpiarErroresCampos()
+    {
+        ErrorNombre = string.Empty;
+        ErrorApellidos = string.Empty;
+        ErrorTelefono = string.Empty;
+        ErrorEmail = string.Empty;
+        ErrorDni = string.Empty;
+        ErrorFechaNacimiento = string.Empty;
+        ErrorNombreTutor = string.Empty;
+        ErrorApellidosTutor = string.Empty;
+        ErrorDniTutor = string.Empty;
+        ErrorTelefonoTutor = string.Empty;
+    }
+
+    private bool ValidarFormularioCompleto()
+    {
+        ValidarNombre();
+        ValidarApellidos();
+        ValidarTelefono();
+        ValidarEmail();
+        ValidarDni();
+        ValidarFechaNacimiento();
+
+        if (EsMenorFormulario)
+        {
+            ValidarNombreTutor();
+            ValidarApellidosTutor();
+            ValidarDniTutor();
+            ValidarTelefonoTutor();
+        }
+        else
+        {
+            ErrorNombreTutor = string.Empty;
+            ErrorApellidosTutor = string.Empty;
+            ErrorDniTutor = string.Empty;
+            ErrorTelefonoTutor = string.Empty;
+        }
+
+        return !TieneErroresFormulario();
+    }
+
+    private bool TieneErroresFormulario() =>
+        !string.IsNullOrEmpty(ErrorNombre) ||
+        !string.IsNullOrEmpty(ErrorApellidos) ||
+        !string.IsNullOrEmpty(ErrorTelefono) ||
+        !string.IsNullOrEmpty(ErrorEmail) ||
+        !string.IsNullOrEmpty(ErrorDni) ||
+        !string.IsNullOrEmpty(ErrorFechaNacimiento) ||
+        !string.IsNullOrEmpty(ErrorNombreTutor) ||
+        !string.IsNullOrEmpty(ErrorApellidosTutor) ||
+        !string.IsNullOrEmpty(ErrorDniTutor) ||
+        !string.IsNullOrEmpty(ErrorTelefonoTutor);
+
+    private string ObtenerPrimerMensajeErrorFormulario()
+    {
+        if (!string.IsNullOrEmpty(ErrorNombre)) return ErrorNombre;
+        if (!string.IsNullOrEmpty(ErrorApellidos)) return ErrorApellidos;
+        if (!string.IsNullOrEmpty(ErrorDni)) return ErrorDni;
+        if (!string.IsNullOrEmpty(ErrorFechaNacimiento)) return ErrorFechaNacimiento;
+        if (!string.IsNullOrEmpty(ErrorTelefono)) return ErrorTelefono;
+        if (!string.IsNullOrEmpty(ErrorEmail)) return ErrorEmail;
+        if (!string.IsNullOrEmpty(ErrorNombreTutor)) return ErrorNombreTutor;
+        if (!string.IsNullOrEmpty(ErrorApellidosTutor)) return ErrorApellidosTutor;
+        if (!string.IsNullOrEmpty(ErrorDniTutor)) return ErrorDniTutor;
+        if (!string.IsNullOrEmpty(ErrorTelefonoTutor)) return ErrorTelefonoTutor;
+        return "Revisa los campos marcados en rojo.";
+    }
+
+    private void ValidarNombre()
+    {
+        var t = Nombre?.Trim() ?? string.Empty;
+        if (string.IsNullOrEmpty(t))
+        {
+            ErrorNombre = ValidacionFormularioActiva ? "El nombre es obligatorio" : string.Empty;
+            return;
+        }
+
+        ErrorNombre = t.Length < 2 && ValidacionFormularioActiva ? "Al menos 2 caracteres" : string.Empty;
+    }
+
+    private void ValidarApellidos()
+    {
+        var t = Apellidos?.Trim() ?? string.Empty;
+        if (string.IsNullOrEmpty(t))
+        {
+            ErrorApellidos = ValidacionFormularioActiva ? "Los apellidos son obligatorios" : string.Empty;
+            return;
+        }
+
+        ErrorApellidos = t.Length < 2 && ValidacionFormularioActiva ? "Al menos 2 caracteres" : string.Empty;
+    }
+
+    private void ValidarTelefono()
+    {
+        var t = Telefono?.Trim() ?? string.Empty;
+        if (string.IsNullOrEmpty(t))
+        {
+            ErrorTelefono = string.Empty;
+            return;
+        }
+
+        ErrorTelefono = EsTelefonoValido(t)
+            ? string.Empty
+            : "Formato: 612345678 o +34612345678";
+    }
+
+    private void ValidarEmail()
+    {
+        var t = Email?.Trim() ?? string.Empty;
+        if (string.IsNullOrEmpty(t))
+        {
+            ErrorEmail = string.Empty;
+            return;
+        }
+
+        ErrorEmail = EsEmailValido(t)
+            ? string.Empty
+            : "Ejemplo: cliente@email.com";
+    }
+
+    private void ValidarDni()
+    {
+        var dni = (Dni ?? string.Empty).Trim().ToUpperInvariant();
+        if (string.IsNullOrEmpty(dni))
+        {
+            ErrorDni = ValidacionFormularioActiva
+                ? "El documento de identidad es obligatorio"
+                : string.Empty;
+            return;
+        }
+
+        if (EsDniNieValido(dni))
+        {
+            ErrorDni = string.Empty;
+            return;
+        }
+
+        if (dni.Length < 5)
+        {
+            ErrorDni = "Mín. 5 caracteres (12345678A, X1234567L o pasaporte)";
+            return;
+        }
+
+        ErrorDni = string.Empty;
+    }
+
+    private bool TryParseFechaNacimientoTexto(out DateTime fecha)
+    {
+        fecha = default;
+        if (string.IsNullOrWhiteSpace(FechaNacimientoTexto))
+            return false;
+
+        var texto = FechaNacimientoTexto.Trim();
+        foreach (var formato in FormatosFechaNacimiento)
+        {
+            if (DateTime.TryParseExact(texto, formato, CultureInfo.InvariantCulture,
+                    DateTimeStyles.None, out fecha))
+                return true;
+        }
+
+        return DateTime.TryParse(texto, CultureInfo.InvariantCulture, DateTimeStyles.None, out fecha);
+    }
+
+    private void ValidarFechaNacimiento()
+    {
+        if (FechaNacimiento.HasValue)
+        {
+            ErrorFechaNacimiento = FechaNacimiento.Value.Date > DateTime.Today
+                ? "No puede ser posterior a hoy"
+                : string.Empty;
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(FechaNacimientoTexto))
+        {
+            ErrorFechaNacimiento = ValidacionFormularioActiva
+                ? "La fecha de nacimiento es obligatoria"
+                : string.Empty;
+            return;
+        }
+
+        if (!TryParseFechaNacimientoTexto(out var fecha))
+        {
+            ErrorFechaNacimiento = ValidacionFormularioActiva
+                ? "Introduce una fecha válida (DD/MM/AAAA)"
+                : string.Empty;
+            return;
+        }
+
+        if (fecha.Day == 29 && fecha.Month == 2 && !DateTime.IsLeapYear(fecha.Year))
+        {
+            ErrorFechaNacimiento = $"El año {fecha.Year} no es bisiesto (29/02 no existe)";
+            return;
+        }
+
+        if (fecha.Date > DateTime.Today)
+        {
+            ErrorFechaNacimiento = "No puede ser posterior a hoy";
+            return;
+        }
+
+        ErrorFechaNacimiento = string.Empty;
+    }
+
+    private void ValidarNombreTutor()
+    {
+        if (!EsMenorFormulario)
+        {
+            ErrorNombreTutor = string.Empty;
+            return;
+        }
+
+        var t = NombreTutor?.Trim() ?? string.Empty;
+        ErrorNombreTutor = string.IsNullOrEmpty(t) && ValidacionFormularioActiva
+            ? "Obligatorio para menores"
+            : string.Empty;
+    }
+
+    private void ValidarApellidosTutor()
+    {
+        if (!EsMenorFormulario)
+        {
+            ErrorApellidosTutor = string.Empty;
+            return;
+        }
+
+        var t = ApellidosTutor?.Trim() ?? string.Empty;
+        ErrorApellidosTutor = string.IsNullOrEmpty(t) && ValidacionFormularioActiva
+            ? "Obligatorio para menores"
+            : string.Empty;
+    }
+
+    private void ValidarDniTutor()
+    {
+        if (!EsMenorFormulario)
+        {
+            ErrorDniTutor = string.Empty;
+            return;
+        }
+
+        var dni = (DniTutor ?? string.Empty).Trim().ToUpperInvariant();
+        if (string.IsNullOrEmpty(dni))
+        {
+            ErrorDniTutor = ValidacionFormularioActiva ? "DNI del tutor obligatorio" : string.Empty;
+            return;
+        }
+
+        if (EsDniNieValido(dni))
+        {
+            ErrorDniTutor = string.Empty;
+            return;
+        }
+
+        ErrorDniTutor = dni.Length < 5
+            ? "Formato DNI/NIE no válido"
+            : string.Empty;
+    }
+
+    private void ValidarTelefonoTutor()
+    {
+        if (!EsMenorFormulario)
+        {
+            ErrorTelefonoTutor = string.Empty;
+            return;
+        }
+
+        var t = TelefonoTutor?.Trim() ?? string.Empty;
+        if (string.IsNullOrEmpty(t))
+        {
+            ErrorTelefonoTutor = string.Empty;
+            return;
+        }
+
+        ErrorTelefonoTutor = EsTelefonoValido(t)
+            ? string.Empty
+            : "Formato: 612345678 o +34612345678";
     }
 
     #endregion

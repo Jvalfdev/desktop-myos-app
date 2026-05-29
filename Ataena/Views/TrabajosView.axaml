@@ -43,7 +43,8 @@
         </Style>
     </UserControl.Styles>
 
-    <Grid RowDefinitions="*,Auto">
+    <Panel>
+        <Grid RowDefinitions="*,Auto">
         
         <!-- ═══════════════════════════════════════════════════════════════ -->
         <!-- COLUMNA 0: LISTA DE TRABAJOS                                     -->
@@ -213,22 +214,96 @@
             
         </Grid>
         
+        <!-- Overlay de carga -->
+        <Border Grid.ColumnSpan="2"
+                IsVisible="{Binding Cargando}"
+                Background="#80000000">
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                <TextBlock Text="⏳" FontSize="48" HorizontalAlignment="Center"/>
+                <TextBlock Text="Cargando..." Margin="0,10,0,0"/>
+            </StackPanel>
+        </Border>
+        
+        <!-- Modal de firma de consentimientos -->
+        <views:ConsentimientoFirmaView DataContext="{Binding ConsentimientoFirmaVM}"/>
+
+        <!-- Modal de fotos de trabajo -->
+        <views:FotoTrabajoView DataContext="{Binding FotoTrabajoVM}"/>
+        
+        <!-- Aviso de consentimiento pendiente (no bloqueante) -->
+        <Border Grid.Row="1"
+                IsVisible="{Binding MostrarAvisoConsentimiento}"
+                Background="#2d3748"
+                CornerRadius="8"
+                Padding="20"
+                Margin="30,10,30,10"
+                BorderBrush="#4a5568"
+                BorderThickness="2">
+            <StackPanel Spacing="14">
+                <StackPanel>
+                    <TextBlock Text="{Binding MensajeAvisoConsentimiento}"
+                               FontSize="14"
+                               FontWeight="SemiBold"
+                               Foreground="White"
+                               TextWrapping="Wrap"/>
+                    <TextBlock Text="Puedes firmarlo ahora o más tarde desde la lista de trabajos."
+                               FontSize="12"
+                               Opacity="0.7"
+                               Margin="0,5,0,0"
+                               TextWrapping="Wrap"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal"
+                            Spacing="10"
+                            HorizontalAlignment="Right">
+                    <Button Command="{Binding FirmarConsentimientoTrabajoCommand}"
+                            CommandParameter="{Binding TrabajoPendienteConsentimiento}"
+                            Classes="btn-primary"
+                            MinWidth="150"
+                            MinHeight="44"
+                            Padding="16,10"
+                            HorizontalContentAlignment="Center"
+                            VerticalContentAlignment="Center">
+                        <TextBlock Text="📝 Firmar ahora"
+                                   TextWrapping="Wrap"
+                                   TextAlignment="Center"/>
+                    </Button>
+                    <Button Command="{Binding CerrarAvisoConsentimientoCommand}"
+                            Classes="btn-secondary"
+                            MinWidth="120"
+                            MinHeight="44"
+                            Padding="16,10"
+                            HorizontalContentAlignment="Center"
+                            VerticalContentAlignment="Center"
+                            Content="Más tarde"/>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+        
+        </Grid>
+
         <!-- ═══════════════════════════════════════════════════════════════ -->
-        <!-- MODAL: FORMULARIO DE CREACIÓN/EDICIÓN DE TRABAJO                -->
+        <!-- MODAL: FORMULARIO (capa superior a toda la vista de trabajos)   -->
         <!-- ═══════════════════════════════════════════════════════════════ -->
-        <Border Grid.Column="0"
+        <Border x:Name="FormularioTrabajoOverlay"
+                ZIndex="500"
                 IsVisible="{Binding MostrarFormulario}"
                 Background="#B0000000"
-                Padding="40">
+                Padding="40"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Stretch"
+                PointerPressed="OnFormularioTrabajoOverlayPointerPressed">
             <!-- Modal centrado con glow suave (altura completa para permitir scroll interno) -->
-            <Border HorizontalAlignment="Center"
+            <Border x:Name="FormularioTrabajoPanel"
+                    HorizontalAlignment="Center"
                     VerticalAlignment="Center"
                     MinWidth="540"
                     MaxWidth="660"
                     MaxHeight="800"
                     Background="#020617"
                     CornerRadius="18"
-                    BoxShadow="0 0 80 0 #50d946ef, 0 0 120 0 #40ec4899">
+                    BoxShadow="0 0 80 0 #50d946ef, 0 0 120 0 #40ec4899"
+                    Focusable="False"
+                    IsTabStop="False">
                 <Grid RowDefinitions="Auto,*,Auto">
                     <!-- Cabecera del modal -->
                     <Border Grid.Row="0"
@@ -255,10 +330,13 @@
                     </Border>
 
                     <!-- Contenido scrollable -->
-                    <ScrollViewer Grid.Row="1"
+                    <ScrollViewer x:Name="FormularioTrabajoScrollViewer"
+                                  Grid.Row="1"
                                   Padding="28,24,40,24"
                                   VerticalScrollBarVisibility="Visible"
-                                  HorizontalScrollBarVisibility="Disabled">
+                                  HorizontalScrollBarVisibility="Disabled"
+                                  Focusable="True"
+                                  IsTabStop="True">
                         <!-- Margen inferior generoso para que el último campo no quede oculto tras el footer -->
                         <StackPanel Margin="0,0,0,80">
 
@@ -275,15 +353,15 @@
                                                FontSize="15"
                                                FontWeight="Bold"
                                                Foreground="#ef5350"/>
-                                    <TextBlock Text="Los datos de arriba ya no se pueden cambiar. Solo puedes ver o enviar el PDF y, más abajo, añadir o quitar fotos del trabajo."
+                                    <TextBlock Text="Cliente, tipo y descripción ya no se pueden cambiar (van en el consentimiento firmado). Sí puedes editar las notas internas, ver, renovar o borrar el consentimiento y gestionar las fotos del trabajo."
                                                FontSize="12"
                                                Foreground="#ffcdd2"
                                                TextWrapping="Wrap"/>
                                 </StackPanel>
                             </Border>
 
-                            <!-- Cliente / tipo / descripción (consentimiento) + notas (solo internas). Desactivado si ya hay consentimiento firmado. -->
-                            <StackPanel IsEnabled="{Binding TrabajoCamposPrincipalesHabilitados}">
+                            <!-- Cliente / tipo / descripción (consentimiento). Sin IsEnabled en el panel: evita que el ComboBox vacíe ClienteSeleccionado al deshabilitar. -->
+                            <StackPanel>
 
                             <!-- Cliente (búsqueda + desplegable) -->
                             <TextBlock Text="Cliente *" Opacity="0.7" Margin="0,0,0,5"/>
@@ -292,11 +370,14 @@
                                      Watermark="Buscar por nombre o teléfono…"
                                      Classes="form-field"
                                      Margin="0,0,0,8"
+                                     IsEnabled="{Binding TrabajoCamposPrincipalesHabilitados}"
                                      TextChanged="OnClienteBusquedaTrabajoTextChanged"/>
                             <ComboBox Name="ClienteTrabajoComboBox"
                                       ItemsSource="{Binding ClientesFiltradosFormulario}"
                                       SelectedItem="{Binding ClienteSeleccionado}"
-                                      MinWidth="260">
+                                      IsEnabled="{Binding TrabajoCamposPrincipalesHabilitados}"
+                                      MinWidth="260"
+                                      DropDownOpened="OnClienteTrabajoComboDropDownOpened">
                                 <ComboBox.ItemTemplate>
                                     <DataTemplate>
                                         <StackPanel Spacing="2">
@@ -314,6 +395,7 @@
                             <!-- Tipo -->
                             <TextBlock Text="Tipo *" Opacity="0.7" Margin="16,16,0,5"/>
                             <ComboBox SelectedItem="{Binding TipoTrabajo}"
+                                      IsEnabled="{Binding TrabajoCamposPrincipalesHabilitados}"
                                       Height="40">
                                 <ComboBox.Items>
                                     <x:Static Member="models:TipoTrabajo.Tatuaje"/>
@@ -325,17 +407,18 @@
                             <TextBlock Text="Descripción * (aparece en el consentimiento)" Opacity="0.7" Margin="16,16,0,5"/>
                             <TextBox Text="{Binding Descripcion}"
                                      Watermark="Ej.: tigre en el cuello, piercing ombligo…"
+                                     IsEnabled="{Binding TrabajoCamposPrincipalesHabilitados}"
                                      Classes="form-field"/>
+                            </StackPanel>
 
-                            <!-- Notas internas: no van al PDF de consentimiento -->
-                            <TextBlock Text="Notas (solo estudio, no en el consentimiento)" Opacity="0.7" Margin="16,16,0,5"/>
+                            <!-- Notas internas: editables aunque el consentimiento esté firmado -->
+                            <TextBlock Text="Notas (solo estudio, no en el consentimiento)" Opacity="0.7" Margin="0,16,0,5"/>
                             <TextBox Text="{Binding Notas}"
                                      Watermark="Notas internas…"
                                      AcceptsReturn="True"
                                      Height="80"
                                      TextWrapping="Wrap"
-                                     Margin="16,0,0,0"/>
-                            </StackPanel>
+                                     Classes="form-field"/>
 
                             <!-- Consentimiento de Trabajo (solo para edición) -->
                             <Border IsVisible="{Binding EsEdicion}"
@@ -363,41 +446,35 @@
                                         </StackPanel>
                                         <StackPanel Grid.Column="1"
                                                     Orientation="Horizontal"
-                                                    Spacing="8"
+                                                    Spacing="6"
                                                     IsVisible="{Binding TrabajoSeleccionado.TieneConsentimiento}">
-                                            <Button Content="📄"
-                                                    Classes="btn-secondary"
+                                            <Button Classes="btn-secondary"
+                                                    MinWidth="64"
+                                                    Height="34"
+                                                    Padding="8,0"
                                                     Command="{Binding AbrirConsentimientoTrabajoCommand}"
                                                     CommandParameter="{Binding TrabajoSeleccionado}"
-                                                    ToolTip.Tip="Ver PDF"
-                                                    Width="36"
-                                                    Height="36"
-                                                    Padding="0"
-                                                    FontSize="18"
-                                                    HorizontalContentAlignment="Center"
-                                                    VerticalContentAlignment="Center"/>
-                                            <Button Content="💾"
-                                                    Classes="btn-secondary"
-                                                    Command="{Binding ExportarConsentimientoTrabajoCommand}"
+                                                    ToolTip.Tip="Abrir PDF">
+                                                <TextBlock Text="Ver" FontSize="12"/>
+                                            </Button>
+                                            <Button Classes="btn-secondary"
+                                                    MinWidth="76"
+                                                    Height="34"
+                                                    Padding="8,0"
+                                                    Command="{Binding RenovarConsentimientoTrabajoCommand}"
                                                     CommandParameter="{Binding TrabajoSeleccionado}"
-                                                    ToolTip.Tip="Exportar PDF"
-                                                    Width="36"
-                                                    Height="36"
-                                                    Padding="0"
-                                                    FontSize="18"
-                                                    HorizontalContentAlignment="Center"
-                                                    VerticalContentAlignment="Center"/>
-                                            <Button Content="📧"
-                                                    Classes="btn-secondary"
-                                                    Command="{Binding EnviarConsentimientoTrabajoPorCorreoCommand}"
+                                                    ToolTip.Tip="Firmar de nuevo (sustituye al anterior)">
+                                                <TextBlock Text="Renovar" FontSize="12"/>
+                                            </Button>
+                                            <Button Classes="btn-danger"
+                                                    MinWidth="68"
+                                                    Height="34"
+                                                    Padding="8,0"
+                                                    Command="{Binding EliminarConsentimientoTrabajoCommand}"
                                                     CommandParameter="{Binding TrabajoSeleccionado}"
-                                                    ToolTip.Tip="Enviar por correo"
-                                                    Width="36"
-                                                    Height="36"
-                                                    Padding="0"
-                                                    FontSize="18"
-                                                    HorizontalContentAlignment="Center"
-                                                    VerticalContentAlignment="Center"/>
+                                                    ToolTip.Tip="Eliminar consentimiento y PDF">
+                                                <TextBlock Text="Borrar" FontSize="12"/>
+                                            </Button>
                                         </StackPanel>
                                     </Grid>
                                     
@@ -587,7 +664,8 @@
                                     Classes="btn-danger"
                                     Command="{Binding EliminarTrabajoCommand}"
                                     IsVisible="{Binding EsEdicion}"
-                                    IsEnabled="{Binding TrabajoCamposPrincipalesHabilitados}"
+                                    IsEnabled="{Binding PuedeEliminarTrabajo}"
+                                    ToolTip.Tip="{Binding TooltipEliminarTrabajo}"
                                     MinWidth="150"
                                     Height="42"
                                     Padding="12,0"
@@ -598,9 +676,10 @@
                                         Orientation="Horizontal"
                                         HorizontalAlignment="Right"
                                         Spacing="12">
-                                <Button Content="Cancelar"
+                                <Button Content="Cerrar"
                                         Classes="btn-secondary"
                                         Command="{Binding CancelarEdicionCommand}"
+                                        ToolTip.Tip="Cerrar sin guardar cambios pendientes (usa Guardar si has editado algo)"
                                         MinWidth="130"
                                         Height="42"
                                         Padding="12,0"
@@ -609,86 +688,21 @@
                                 <Button Content="💾 Guardar"
                                         Classes="btn-primary"
                                         Command="{Binding GuardarTrabajoCommand}"
-                                        IsEnabled="{Binding TrabajoCamposPrincipalesHabilitados}"
+                                        IsEnabled="{Binding PuedeGuardarTrabajoFormulario}"
                                         MinWidth="130"
                                         Height="42"
                                         Padding="12,0"
                                         HorizontalContentAlignment="Center"
                                         VerticalContentAlignment="Center"
-                                        ToolTip.Tip="{Binding TrabajoFormularioBloqueadoPorConsentimiento, Converter={StaticResource BoolToTextConverter}, ConverterParameter='Consentimiento firmado: no se puede guardar cambios del trabajo|Guardar trabajo'}"/>
+                                        ToolTip.Tip="{Binding TrabajoFormularioBloqueadoPorConsentimiento, Converter={StaticResource BoolToTextConverter}, ConverterParameter='Guardar solo las notas internas|Guardar trabajo'}"/>
                             </StackPanel>
                         </Grid>
                     </Border>
                 </Grid>
             </Border>
         </Border>
-        
-        <!-- Overlay de carga -->
-        <Border Grid.ColumnSpan="2"
-                IsVisible="{Binding Cargando}"
-                Background="#80000000">
-            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                <TextBlock Text="⏳" FontSize="48" HorizontalAlignment="Center"/>
-                <TextBlock Text="Cargando..." Margin="0,10,0,0"/>
-            </StackPanel>
-        </Border>
-        
-        <!-- Modal de firma de consentimientos -->
-        <views:ConsentimientoFirmaView DataContext="{Binding ConsentimientoFirmaVM}"/>
 
-        <!-- Modal de fotos de trabajo -->
-        <views:FotoTrabajoView DataContext="{Binding FotoTrabajoVM}"/>
-        
-        <!-- Aviso de consentimiento pendiente (no bloqueante) -->
-        <Border Grid.Row="1"
-                IsVisible="{Binding MostrarAvisoConsentimiento}"
-                Background="#2d3748"
-                CornerRadius="8"
-                Padding="20"
-                Margin="30,10,30,10"
-                BorderBrush="#4a5568"
-                BorderThickness="2">
-            <StackPanel Spacing="14">
-                <StackPanel>
-                    <TextBlock Text="{Binding MensajeAvisoConsentimiento}"
-                               FontSize="14"
-                               FontWeight="SemiBold"
-                               Foreground="White"
-                               TextWrapping="Wrap"/>
-                    <TextBlock Text="Puedes firmarlo ahora o más tarde desde la lista de trabajos."
-                               FontSize="12"
-                               Opacity="0.7"
-                               Margin="0,5,0,0"
-                               TextWrapping="Wrap"/>
-                </StackPanel>
-                <StackPanel Orientation="Horizontal"
-                            Spacing="10"
-                            HorizontalAlignment="Right">
-                    <Button Command="{Binding FirmarConsentimientoTrabajoCommand}"
-                            CommandParameter="{Binding TrabajoPendienteConsentimiento}"
-                            Classes="btn-primary"
-                            MinWidth="150"
-                            MinHeight="44"
-                            Padding="16,10"
-                            HorizontalContentAlignment="Center"
-                            VerticalContentAlignment="Center">
-                        <TextBlock Text="📝 Firmar ahora"
-                                   TextWrapping="Wrap"
-                                   TextAlignment="Center"/>
-                    </Button>
-                    <Button Command="{Binding CerrarAvisoConsentimientoCommand}"
-                            Classes="btn-secondary"
-                            MinWidth="120"
-                            MinHeight="44"
-                            Padding="16,10"
-                            HorizontalContentAlignment="Center"
-                            VerticalContentAlignment="Center"
-                            Content="Más tarde"/>
-                </StackPanel>
-            </StackPanel>
-        </Border>
-        
-    </Grid>
+    </Panel>
 
 </UserControl>
 

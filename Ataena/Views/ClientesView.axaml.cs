@@ -27,10 +27,22 @@ public partial class ClientesView : UserControl
     /// </summary>
     private async void OnLoaded(object? sender, RoutedEventArgs e)
     {
+        ConfigurarLimitesFechaNacimiento();
+
         if (DataContext is ClientesViewModel vm)
         {
             await vm.CargarClientesCommand.ExecuteAsync(null);
         }
+    }
+
+    /// <summary>
+    /// El selector de fecha no permite años futuros (MaxYear = hoy).
+    /// </summary>
+    private void ConfigurarLimitesFechaNacimiento()
+    {
+        var hoy = DateTime.Today;
+        FechaNacimientoDatePicker.MaxYear = new DateTimeOffset(hoy);
+        FechaNacimientoDatePicker.MinYear = new DateTimeOffset(1900, 1, 1, 0, 0, 0, TimeSpan.Zero);
     }
 
     /// <summary>
@@ -74,6 +86,8 @@ public partial class ClientesView : UserControl
             // Aplicar estilos de fin de semana cuando se abre el popup
             if (popup.IsOpen)
             {
+                ConfigurarLimitesFechaNacimiento();
+
                 // Usar un pequeño delay para asegurar que el calendario esté renderizado
                 Dispatcher.UIThread.Post(() =>
                 {

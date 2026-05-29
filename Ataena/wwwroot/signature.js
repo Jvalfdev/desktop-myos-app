@@ -128,7 +128,12 @@ function configurarEventosCanvas(c, context, overlay, onStroke) {
     }
 
     function empezar(x, y) {
-        if (!firmasPermitidas()) return false;
+        if (!firmasPermitidas()) {
+            if (typeof window.__ataenaMostrarAvisoFirma === 'function') {
+                window.__ataenaMostrarAvisoFirma();
+            }
+            return false;
+        }
         dibujando = true;
         lx = x;
         ly = y;
