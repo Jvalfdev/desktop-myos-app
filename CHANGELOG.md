@@ -5,6 +5,17 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es/1.0.0/).
 
 ---
 
+## [0.6.2] - 2026-06-11
+
+### Añadido
+- **Foto de DNI (fase 1):** captura con móvil en página dedicada (`/foto-dni/`), subida desde PC y escáner; recorte automático del documento y mejora de legibilidad antes de guardar.
+
+### Arreglado
+- **Crash tras guardar la foto del DNI:** al terminar de guardar, la app recargaba toda la lista de clientes en un hilo de fondo y Avalonia lanzaba `Call from invalid thread` al actualizar la paginación. En la práctica parecía fallar al pulsar «Ver DNI», pero el cierre ocurría por esa recarga en segundo plano. Ahora la actualización va al hilo de la interfaz y solo sincroniza el cliente afectado.
+- **Ver foto del DNI:** apertura más fiable con el visor predeterminado de Windows; el JPEG se escribe permitiendo lectura simultánea para la miniatura y el visor externo.
+
+---
+
 ## [0.6.1] - 2026-06-11
 
 ### Añadido
@@ -131,6 +142,7 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es/1.0.0/).
 
 ---
 
+[0.6.2]: https://github.com/Jvalfdev/desktop-myos-app/releases/tag/v0.6.2
 [0.6.1]: https://github.com/Jvalfdev/desktop-myos-app/releases/tag/v0.6.1
 [0.6.0]: https://github.com/Jvalfdev/desktop-myos-app/releases/tag/v0.6.0
 [0.5.6]: https://github.com/Jvalfdev/desktop-myos-app/releases/tag/v0.5.6

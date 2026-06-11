@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.EntityFrameworkCore;
@@ -536,8 +537,11 @@ public partial class ClientesViewModel : ViewModelBase
         try
         {
             Log.Debug("Cargando lista de clientes");
-            Cargando = true;
-            MensajeError = string.Empty;
+            await EnUiThreadAsync(() =>
+            {
+                Cargando = true;
+                MensajeError = string.Empty;
+            });
 
             // AsNoTracking() evita que EF Core use entidades en caché,
             // asegurando datos frescos de la BD después de actualizaciones
@@ -548,17 +552,18 @@ public partial class ClientesViewModel : ViewModelBase
 
             _clientesEnCache = lista;
             _filtroSinRgpdActivo = false;
-            EstablecerListaClientes(lista);
+            await EnUiThreadAsync(() => EstablecerListaClientes(lista));
             Log.Information("Clientes cargados: {Count} clientes activos", lista.Count);
         }
         catch (Exception ex)
         {
             Log.Error(ex, "Error al cargar clientes desde la base de datos");
-            MensajeError = $"Error al cargar clientes: {ex.Message}";
+            await EnUiThreadAsync(() =>
+                MensajeError = $"Error al cargar clientes: {ex.Message}");
         }
         finally
         {
-            Cargando = false;
+            await EnUiThreadAsync(() => Cargando = false);
         }
     }
 
@@ -596,8 +601,11 @@ public partial class ClientesViewModel : ViewModelBase
             }
 
             var lista = FiltrarClientesEnCache(TextoBusqueda);
-            PaginaActual = 1;
-            EstablecerListaClientes(lista);
+            await EnUiThreadAsync(() =>
+            {
+                PaginaActual = 1;
+                EstablecerListaClientes(lista);
+            });
         }
         catch (OperationCanceledException)
         {
@@ -606,7 +614,8 @@ public partial class ClientesViewModel : ViewModelBase
         catch (Exception ex)
         {
             Log.Error(ex, "Error en búsqueda automática de clientes");
-            MensajeError = $"Error en la búsqueda: {ex.Message}";
+            await EnUiThreadAsync(() =>
+                MensajeError = $"Error en la búsqueda: {ex.Message}");
         }
     }
 
@@ -1178,17 +1187,8 @@ public partial class ClientesViewModel : ViewModelBase
         {
             MensajeError = string.Empty;
 
-            if (FotoDniVM == null)
-            {
-                FotoDniVM = new FotoDniViewModel();
-                FotoDniVM.FotoGuardada += async (s, c) =>
-                {
-                    await CargarClientes();
-                    await RefrescarFichaClientePorIdAsync(c.Id);
-                };
-            }
-
-            await FotoDniVM.AbrirModalAsync(cliente, esDniTutor: false);
+            AsegurarFotoDniViewModel();
+            await FotoDniVM!.AbrirModalAsync(cliente, esDniTutor: false);
         }
         catch (Exception ex)
         {
@@ -1219,17 +1219,8 @@ public partial class ClientesViewModel : ViewModelBase
                 return;
             }
 
-            if (FotoDniVM == null)
-            {
-                FotoDniVM = new FotoDniViewModel();
-                FotoDniVM.FotoGuardada += async (s, c) =>
-                {
-                    await CargarClientes();
-                    await RefrescarFichaClientePorIdAsync(c.Id);
-                };
-            }
-
-            await FotoDniVM.AbrirModalAsync(cliente, esDniTutor: true);
+            AsegurarFotoDniViewModel();
+            await FotoDniVM!.AbrirModalAsync(cliente, esDniTutor: true);
         }
         catch (Exception ex)
         {
@@ -1268,6 +1259,58 @@ public partial class ClientesViewModel : ViewModelBase
             "No hay foto del DNI del tutor guardada.");
     }
 
+  private void AsegurarFotoDniViewModel()
+    {
+        if (FotoDniVM != null)
+            return;
+
+        FotoDniVM = new FotoDniViewModel();
+        FotoDniVM.FotoGuardada += (_, c) => _ = OnFotoDniGuardadaAsync(c);
+    }
+
+    /// <summary>
+    /// Tras guardar una foto de DNI, actualiza la lista y la ficha sin recargar toda la BD en segundo plano.
+    /// </summary>
+    private async Task OnFotoDniGuardadaAsync(Cliente cliente)
+    {
+        try
+        {
+            await EnUiThreadAsync(() => ActualizarClienteTrasFotoDni(cliente));
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error tras guardar foto DNI del cliente {ClienteId}", cliente.Id);
+            await EnUiThreadAsync(() =>
+                MensajeError = $"Error al actualizar tras guardar el DNI: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Sincroniza rutas de foto DNI en caché, lista paginada y ficha abierta.
+    /// Debe ejecutarse en el hilo de UI.
+    /// </summary>
+    private void ActualizarClienteTrasFotoDni(Cliente clienteActualizado)
+    {
+        var enCache = _clientesEnCache.FirstOrDefault(c => c.Id == clienteActualizado.Id);
+        if (enCache != null)
+        {
+            enCache.FotoDniPath = clienteActualizado.FotoDniPath;
+            enCache.FotoDniTutorPath = clienteActualizado.FotoDniTutorPath;
+        }
+
+        var fuente = _filtroSinRgpdActivo || !string.IsNullOrWhiteSpace(TextoBusqueda)
+            ? FiltrarClientesEnCache(TextoBusqueda)
+            : _clientesEnCache;
+        EstablecerListaClientes(fuente);
+
+        if (ClienteSeleccionado?.Id == clienteActualizado.Id)
+        {
+            ClienteSeleccionado.FotoDniPath = clienteActualizado.FotoDniPath;
+            ClienteSeleccionado.FotoDniTutorPath = clienteActualizado.FotoDniTutorPath;
+            OnPropertyChanged(nameof(ClienteSeleccionado));
+        }
+    }
+
     private Task AbrirFotoDniEnVisor(string? ruta, string mensajeSinFoto)
     {
         try
@@ -1280,11 +1323,7 @@ public partial class ClientesViewModel : ViewModelBase
                 return Task.CompletedTask;
             }
 
-            Process.Start(new ProcessStartInfo
-            {
-                FileName = ruta,
-                UseShellExecute = true
-            });
+            ArchivoSistemaService.AbrirEnVisorPredeterminado(ruta);
         }
         catch (Exception ex)
         {
@@ -1511,8 +1550,11 @@ public partial class ClientesViewModel : ViewModelBase
         try
         {
             Log.Debug("Filtrando clientes sin consentimiento RGPD");
-            Cargando = true;
-            MensajeError = string.Empty;
+            await EnUiThreadAsync(() =>
+            {
+                Cargando = true;
+                MensajeError = string.Empty;
+            });
 
             // Cargar todos los clientes con sus consentimientos
             var todosClientes = await _db.Clientes
@@ -1526,19 +1568,24 @@ public partial class ClientesViewModel : ViewModelBase
 
             _clientesEnCache = clientesSinRGPD;
             _filtroSinRgpdActivo = true;
-            PaginaActual = 1;
-            EstablecerListaClientes(FiltrarClientesEnCache(TextoBusqueda));
-            
+            var filtrados = FiltrarClientesEnCache(TextoBusqueda);
+            await EnUiThreadAsync(() =>
+            {
+                PaginaActual = 1;
+                EstablecerListaClientes(filtrados);
+            });
+
             Log.Information("Filtrado completado: {Count} clientes sin consentimiento RGPD", clientesSinRGPD.Count);
         }
         catch (Exception ex)
         {
             Log.Error(ex, "Error al filtrar clientes sin consentimiento");
-            MensajeError = $"Error en el filtrado: {ex.Message}";
+            await EnUiThreadAsync(() =>
+                MensajeError = $"Error en el filtrado: {ex.Message}");
         }
         finally
         {
-            Cargando = false;
+            await EnUiThreadAsync(() => Cargando = false);
         }
     }
 
@@ -2527,10 +2574,30 @@ public partial class ClientesViewModel : ViewModelBase
     #region Ordenación y paginación
 
     /// <summary>
+    /// Ejecuta una acción en el hilo de UI de Avalonia (requerido tras awaits en métodos async).
+    /// </summary>
+    private static async Task EnUiThreadAsync(Action accion)
+    {
+        if (Dispatcher.UIThread.CheckAccess())
+        {
+            accion();
+            return;
+        }
+
+        await Dispatcher.UIThread.InvokeAsync(accion);
+    }
+
+    /// <summary>
     /// Asigna la lista completa aplicando el orden seleccionado y refresca la paginación.
     /// </summary>
     private void EstablecerListaClientes(IEnumerable<Cliente> clientes)
     {
+        if (!Dispatcher.UIThread.CheckAccess())
+        {
+            Dispatcher.UIThread.Post(() => EstablecerListaClientes(clientes));
+            return;
+        }
+
         var ordenada = OrdenarClientes(clientes).ToList();
         _todosLosClientes = new ObservableCollection<Cliente>(ordenada);
         TotalClientes = ordenada.Count;
@@ -2575,6 +2642,12 @@ public partial class ClientesViewModel : ViewModelBase
     /// </summary>
     private void ActualizarPaginacion()
     {
+        if (!Dispatcher.UIThread.CheckAccess())
+        {
+            Dispatcher.UIThread.Post(ActualizarPaginacion);
+            return;
+        }
+
         if (_todosLosClientes == null || _todosLosClientes.Count == 0)
         {
             Clientes.Clear();

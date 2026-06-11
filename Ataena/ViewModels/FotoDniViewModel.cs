@@ -153,7 +153,8 @@ public partial class FotoDniViewModel : ViewModelBase
 
         try
         {
-            using var stream = File.OpenRead(ruta);
+            using var stream = new FileStream(
+                ruta, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
             return new Bitmap(stream);
         }
         catch (Exception ex)
@@ -198,7 +199,7 @@ public partial class FotoDniViewModel : ViewModelBase
 
             await Dispatcher.UIThread.InvokeAsync(() =>
             {
-                UrlFoto = _firmaWebService.GenerarUrlFoto(_tokenActual);
+                UrlFoto = _firmaWebService.GenerarUrlFotoDni(_tokenActual);
                 QrCodeImage = QRCodeService.GenerarQRCode(UrlFoto, 300);
                 EstadoConexion = "✅ Escanea el código QR con tu móvil y sube la foto del DNI";
             });
@@ -244,9 +245,7 @@ public partial class FotoDniViewModel : ViewModelBase
             }
 
             Log.Information("Foto DNI recibida, tamaño base64: {Tamaño} caracteres", imagenBase64.Length);
-            EstadoConexion = "📥 Recibiendo foto...";
 
-            // Decodificar imagen
             byte[] bytes;
             try
             {
@@ -261,61 +260,7 @@ public partial class FotoDniViewModel : ViewModelBase
                 return;
             }
 
-            // Determinar ruta según tipo
-            var ruta = _esDniTutor
-                ? ConsentimientoPathService.ObtenerRutaFotoDniTutor(_cliente.Id)
-                : ConsentimientoPathService.ObtenerRutaFotoDni(_cliente.Id);
-
-            Log.Information("Guardando foto DNI en: {Ruta}", ruta);
-
-            var directorio = Path.GetDirectoryName(ruta);
-            if (!string.IsNullOrEmpty(directorio))
-            {
-                Directory.CreateDirectory(directorio);
-            }
-
-            await File.WriteAllBytesAsync(ruta, bytes);
-            Log.Information("Foto DNI guardada en disco: {Ruta}", ruta);
-
-            // Actualizar cliente en BD
-            using var db = new AtaenaDbContext();
-            var clienteDb = await db.Clientes.FirstOrDefaultAsync(c => c.Id == _cliente.Id);
-            if (clienteDb == null)
-            {
-                Log.Error("No se encontró el cliente {ClienteId} en la base de datos", _cliente.Id);
-                MensajeError = "Error: No se encontró el cliente en la base de datos.";
-                EstadoConexion = "❌ Error al actualizar";
-                return;
-            }
-
-            if (_esDniTutor)
-            {
-                clienteDb.FotoDniTutorPath = ruta;
-                _cliente.FotoDniTutorPath = ruta;
-            }
-            else
-            {
-                clienteDb.FotoDniPath = ruta;
-                _cliente.FotoDniPath = ruta;
-            }
-
-            await db.SaveChangesAsync();
-            Log.Information("Cliente actualizado con ruta de foto DNI: {Ruta}", ruta);
-
-            // Actualizar preview
-            PreviewFotoDni = CargarBitmapDesdeRuta(ruta);
-            OnPropertyChanged(nameof(PreviewFotoDni));
-
-            Log.Information("✅ Foto de DNI guardada correctamente");
-            EstadoConexion = "✅ Foto del DNI recibida y guardada correctamente";
-            MensajeError = string.Empty;
-
-            // Disparar evento
-            FotoGuardada?.Invoke(this, clienteDb);
-
-            // Cerrar automáticamente
-            await Task.Delay(1500);
-            Cerrar();
+            await GuardarFotoDniProcesadaAsync(bytes);
         }
         catch (Exception ex)
         {
@@ -355,11 +300,7 @@ public partial class FotoDniViewModel : ViewModelBase
                 return;
             }
 
-            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-            {
-                FileName = ruta,
-                UseShellExecute = true
-            });
+            ArchivoSistemaService.AbrirEnVisorPredeterminado(ruta);
         }
         catch (Exception ex)
         {
@@ -413,61 +354,13 @@ public partial class FotoDniViewModel : ViewModelBase
                 return;
 
             var archivo = archivos[0];
-            EstadoConexion = "📥 Procesando imagen...";
 
-            // Leer el archivo
             await using var stream = await archivo.OpenReadAsync();
             using var memoryStream = new MemoryStream();
             await stream.CopyToAsync(memoryStream);
             var bytes = memoryStream.ToArray();
 
-            // Determinar ruta de destino
-            var ruta = _esDniTutor
-                ? ConsentimientoPathService.ObtenerRutaFotoDniTutor(_cliente.Id)
-                : ConsentimientoPathService.ObtenerRutaFotoDni(_cliente.Id);
-
-            var directorio = Path.GetDirectoryName(ruta);
-            if (!string.IsNullOrEmpty(directorio))
-            {
-                Directory.CreateDirectory(directorio);
-            }
-
-            await File.WriteAllBytesAsync(ruta, bytes);
-            Log.Information("Foto DNI subida desde ordenador: {Ruta}", ruta);
-
-            // Actualizar cliente en BD
-            using var db = new AtaenaDbContext();
-            var clienteDb = await db.Clientes.FirstOrDefaultAsync(c => c.Id == _cliente.Id);
-            if (clienteDb == null)
-            {
-                MensajeError = "Error: No se encontró el cliente.";
-                return;
-            }
-
-            if (_esDniTutor)
-            {
-                clienteDb.FotoDniTutorPath = ruta;
-                _cliente.FotoDniTutorPath = ruta;
-            }
-            else
-            {
-                clienteDb.FotoDniPath = ruta;
-                _cliente.FotoDniPath = ruta;
-            }
-
-            await db.SaveChangesAsync();
-
-            // Actualizar preview
-            PreviewFotoDni = CargarBitmapDesdeRuta(ruta);
-            OnPropertyChanged(nameof(PreviewFotoDni));
-
-            EstadoConexion = "✅ Foto del DNI guardada correctamente";
-            MensajeError = string.Empty;
-
-            FotoGuardada?.Invoke(this, clienteDb);
-
-            await Task.Delay(1500);
-            Cerrar();
+            await GuardarFotoDniProcesadaAsync(bytes);
         }
         catch (Exception ex)
         {
@@ -506,32 +399,8 @@ public partial class FotoDniViewModel : ViewModelBase
 
             if (exito)
             {
-                // Actualizar cliente en BD
-                using var db = new AtaenaDbContext();
-                var clienteDb = await db.Clientes.FirstOrDefaultAsync(c => c.Id == _cliente.Id);
-                if (clienteDb != null)
-                {
-                    if (_esDniTutor)
-                    {
-                        clienteDb.FotoDniTutorPath = ruta;
-                        _cliente.FotoDniTutorPath = ruta;
-                    }
-                    else
-                    {
-                        clienteDb.FotoDniPath = ruta;
-                        _cliente.FotoDniPath = ruta;
-                    }
-                    await db.SaveChangesAsync();
-                }
-
-                PreviewFotoDni = CargarBitmapDesdeRuta(ruta);
-                OnPropertyChanged(nameof(PreviewFotoDni));
-                EstadoConexion = "✅ Documento escaneado y guardado correctamente";
-                MensajeError = string.Empty;
-                FotoGuardada?.Invoke(this, clienteDb ?? _cliente);
-
-                await Task.Delay(1500);
-                Cerrar();
+                var bytes = await File.ReadAllBytesAsync(ruta);
+                await GuardarFotoDniProcesadaAsync(bytes);
             }
             else
             {
@@ -548,6 +417,103 @@ public partial class FotoDniViewModel : ViewModelBase
         finally
         {
             EstaProcesando = false;
+        }
+    }
+
+    /// <summary>
+    /// Recorta, mejora y persiste la foto del DNI en disco y en la ficha del cliente.
+    /// </summary>
+    private async Task<bool> GuardarFotoDniProcesadaAsync(byte[] bytesCrudos)
+    {
+        if (_cliente == null)
+        {
+            MensajeError = "No hay cliente seleccionado.";
+            return false;
+        }
+
+        try
+        {
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                EstaProcesando = true;
+                EstadoConexion = "🔄 Recortando y mejorando imagen del DNI...";
+                MensajeError = string.Empty;
+            });
+
+            var resultado = await DniImagenService.ProcesarAsync(bytesCrudos);
+
+            var ruta = _esDniTutor
+                ? ConsentimientoPathService.ObtenerRutaFotoDniTutor(_cliente.Id)
+                : ConsentimientoPathService.ObtenerRutaFotoDni(_cliente.Id);
+
+            var directorio = Path.GetDirectoryName(ruta);
+            if (!string.IsNullOrEmpty(directorio))
+                Directory.CreateDirectory(directorio);
+
+            await using (var stream = new FileStream(
+                ruta, FileMode.Create, FileAccess.Write, FileShare.Read))
+            {
+                await stream.WriteAsync(resultado.BytesJpeg);
+            }
+            Log.Information(
+                "Foto DNI procesada guardada en {Ruta} (recorte={Recorte})",
+                ruta, resultado.RecorteDocumentoAplicado);
+
+            using var db = new AtaenaDbContext();
+            var clienteDb = await db.Clientes.FirstOrDefaultAsync(c => c.Id == _cliente.Id);
+            if (clienteDb == null)
+            {
+                MensajeError = "Error: No se encontró el cliente en la base de datos.";
+                EstadoConexion = "❌ Error al actualizar";
+                return false;
+            }
+
+            if (_esDniTutor)
+            {
+                clienteDb.FotoDniTutorPath = ruta;
+                _cliente.FotoDniTutorPath = ruta;
+            }
+            else
+            {
+                clienteDb.FotoDniPath = ruta;
+                _cliente.FotoDniPath = ruta;
+            }
+
+            await db.SaveChangesAsync();
+
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                PreviewFotoDni = CargarBitmapDesdeRuta(ruta);
+                OnPropertyChanged(nameof(PreviewFotoDni));
+
+                if (resultado.RecorteDocumentoAplicado)
+                {
+                    EstadoConexion = "✅ DNI recortado y guardado correctamente";
+                    MensajeError = string.Empty;
+                }
+                else
+                {
+                    EstadoConexion = "✅ Foto del DNI guardada (con mejora de imagen)";
+                    MensajeError = resultado.AvisoUsuario ?? string.Empty;
+                }
+
+                FotoGuardada?.Invoke(this, clienteDb);
+            });
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error al procesar y guardar foto DNI");
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                MensajeError = $"Error al procesar la foto: {ex.Message}";
+                EstadoConexion = "❌ Error al guardar la foto";
+            });
+            return false;
+        }
+        finally
+        {
+            await Dispatcher.UIThread.InvokeAsync(() => EstaProcesando = false);
         }
     }
 }
